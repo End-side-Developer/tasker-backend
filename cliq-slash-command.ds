@@ -41,7 +41,7 @@ if (spaceIndex > 0) {
 if (command.equalsIgnoreCase("hello")) {
     try {
         apiResponse = invokeUrl [
-            url: "http://localhost:3000/api/test/hello"
+            url: "https://tasker-backend-b10p.onrender.com/api/test/hello"
             type: GET
         ];
         
@@ -66,7 +66,7 @@ else if (command.equalsIgnoreCase("echo")) {
         params = arguments.subString(arguments.indexOf(" ") + 1, arguments.length());
         
         apiResponse = invokeUrl [
-            url: "http://localhost:3000/api/test/echo?" + params
+            url: "https://tasker-backend-b10p.onrender.com/api/test/echo?" + params
             type: GET
         ];
         
@@ -108,7 +108,7 @@ else if (command.equalsIgnoreCase("greet")) {
         }
         
         apiResponse = invokeUrl [
-            url: "http://localhost:3000/api/test/greet"
+            url: "https://tasker-backend-b10p.onrender.com/api/test/greet"
             type: POST
             parameters: {
                 "name": name,
@@ -179,7 +179,7 @@ else if (command.equalsIgnoreCase("calc")) {
         }
         
         apiResponse = invokeUrl [
-            url: "http://localhost:3000/api/test/calculate"
+            url: "https://tasker-backend-b10p.onrender.com/api/test/calculate"
             type: POST
             parameters: {
                 "num1": num1,

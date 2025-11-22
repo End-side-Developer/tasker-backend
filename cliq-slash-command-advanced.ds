@@ -1,0 +1,471 @@
+/**
+ * Zoho Cliq Slash Command: /tasker (Advanced Version)
+ * 
+ * Enhanced task management commands for Tasker Backend API
+ * 
+ * Usage Examples:
+ * /tasker create "Fix login bug" priority:high due:2025-12-01
+ * /tasker list status:pending priority:high
+ * /tasker my tasks
+ * /tasker complete task_abc123
+ * /tasker assign task_abc123 @john
+ * /tasker search "login"
+ * /tasker projects
+ * /tasker project create "Marketing Campaign"
+ */
+
+// Configuration
+BASE_URL = "https://tasker-backend-b10p.onrender.com/api/cliq/commands";
+API_KEY = "34a8176cd72297093e2b349a6fb9b2443dffb51d8291cfe6711063cb4b6eafb3";
+
+// Main handler
+response = Map();
+headers = Map();
+headers.put("x-api-key", API_KEY);
+headers.put("Content-Type", "application/json");
+
+// Get user context
+userContext = Map();
+userContext.put("userId", user.get("id"));
+userContext.put("userName", user.get("name"));
+userContext.put("channelId", channel.get("id"));
+
+// Parse command
+if (arguments.isEmpty()) {
+    response.put("text", getHelpText());
+    return response;
+}
+
+// Extract command and parameters
+spaceIndex = arguments.indexOf(" ");
+if (spaceIndex > 0) {
+    command = arguments.subString(0, spaceIndex);
+    params = arguments.subString(spaceIndex + 1, arguments.length()).trim();
+} else {
+    command = arguments;
+    params = "";
+}
+
+// ===========================================
+// Command: /tasker create
+// ===========================================
+if (command.equalsIgnoreCase("create")) {
+    try {
+        // Parse: /tasker create "Task Title" priority:high due:2025-12-01 tags:bug,urgent
+        taskData = parseCreateCommand(params);
+        taskData.put("cliqContext", userContext);
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/create-task"
+            type: POST
+            parameters: taskData.toString()
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker list
+// ===========================================
+else if (command.equalsIgnoreCase("list")) {
+    try {
+        // Parse filters from params
+        filters = parseFilters(params);
+        filters.put("userId", user.get("id"));
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/list-tasks?" + buildQueryString(filters)
+            type: GET
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker my tasks
+// ===========================================
+else if (command.equalsIgnoreCase("my") && params.equalsIgnoreCase("tasks")) {
+    try {
+        queryParams = "userId=" + user.get("id") + "&assignedTo=" + user.get("id");
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/list-tasks?" + queryParams
+            type: GET
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker complete
+// ===========================================
+else if (command.equalsIgnoreCase("complete")) {
+    try {
+        taskId = params.trim();
+        
+        if (taskId.isEmpty()) {
+            response.put("text", "❌ Usage: `/tasker complete <task_id>`");
+            return response;
+        }
+        
+        payload = Map();
+        payload.put("taskId", taskId);
+        payload.put("completedBy", user.get("id"));
+        payload.put("completedByName", user.get("name"));
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/complete-task"
+            type: POST
+            parameters: payload.toString()
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker assign
+// ===========================================
+else if (command.equalsIgnoreCase("assign")) {
+    try {
+        // Parse: /tasker assign task_123 @john
+        parts = params.split(" ");
+        
+        if (parts.size() < 2) {
+            response.put("text", "❌ Usage: `/tasker assign <task_id> @username`");
+            return response;
+        }
+        
+        taskId = parts.get(0);
+        assignee = parts.get(1);
+        
+        // Remove @ if present
+        if (assignee.startsWith("@")) {
+            assignee = assignee.subString(1, assignee.length());
+        }
+        
+        payload = Map();
+        payload.put("taskId", taskId);
+        payload.put("assignedTo", assignee);
+        payload.put("assignedToName", assignee);
+        payload.put("assignedBy", user.get("id"));
+        payload.put("assignedByName", user.get("name"));
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/assign-task"
+            type: POST
+            parameters: payload.toString()
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker search
+// ===========================================
+else if (command.equalsIgnoreCase("search")) {
+    try {
+        searchQuery = params.trim();
+        
+        if (searchQuery.isEmpty()) {
+            response.put("text", "❌ Usage: `/tasker search <keyword>`");
+            return response;
+        }
+        
+        // Remove quotes if present
+        if (searchQuery.startsWith("\"")) {
+            searchQuery = searchQuery.subString(1, searchQuery.length() - 1);
+        }
+        
+        queryParams = "query=" + searchQuery + "&userId=" + user.get("id");
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/search?" + queryParams
+            type: GET
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker projects
+// ===========================================
+else if (command.equalsIgnoreCase("projects")) {
+    try {
+        queryParams = "userId=" + user.get("id");
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/list-projects?" + queryParams
+            type: GET
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker project create
+// ===========================================
+else if (command.equalsIgnoreCase("project") && params.toLowerCase().startsWith("create")) {
+    try {
+        // Extract project name
+        projectName = params.subString(7, params.length()).trim();
+        
+        // Remove quotes if present
+        if (projectName.startsWith("\"")) {
+            endQuote = projectName.indexOf("\"", 1);
+            if (endQuote > 0) {
+                projectName = projectName.subString(1, endQuote);
+            }
+        }
+        
+        payload = Map();
+        payload.put("name", projectName);
+        payload.put("createdBy", user.get("id"));
+        payload.put("createdByName", user.get("name"));
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/create-project"
+            type: POST
+            parameters: payload.toString()
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Command: /tasker overdue
+// ===========================================
+else if (command.equalsIgnoreCase("overdue")) {
+    try {
+        queryParams = "status=pending&userId=" + user.get("id");
+        
+        apiResponse = invokeUrl [
+            url: BASE_URL + "/list-tasks?" + queryParams
+            type: GET
+            headers: headers
+        ];
+        
+        if (apiResponse.get("success")) {
+            response.put("text", "📅 Overdue tasks:\n" + apiResponse.get("text"));
+            if (apiResponse.containsKey("card")) {
+                response.put("card", apiResponse.get("card"));
+            }
+        } else {
+            response.put("text", apiResponse.get("text"));
+        }
+    } catch (e) {
+        response.put("text", "❌ Error: " + e);
+    }
+}
+
+// ===========================================
+// Unknown command
+// ===========================================
+else {
+    response.put("text", "❌ Unknown command: `" + command + "`\n\n" + getHelpText());
+}
+
+return response;
+
+// ===========================================
+// Helper Functions
+// ===========================================
+
+// Parse create command
+Map parseCreateCommand(String params) {
+    data = Map();
+    
+    // Extract title (first part in quotes or until first key:value)
+    titleEnd = params.indexOf(" priority:");
+    if (titleEnd < 0) titleEnd = params.indexOf(" due:");
+    if (titleEnd < 0) titleEnd = params.indexOf(" tags:");
+    if (titleEnd < 0) titleEnd = params.length();
+    
+    title = params.subString(0, titleEnd).trim();
+    
+    // Remove quotes
+    if (title.startsWith("\"")) {
+        endQuote = title.indexOf("\"", 1);
+        if (endQuote > 0) {
+            title = title.subString(1, endQuote);
+        }
+    }
+    
+    data.put("title", title);
+    
+    // Parse priority
+    if (params.contains("priority:")) {
+        priorityStart = params.indexOf("priority:") + 9;
+        priorityEnd = params.indexOf(" ", priorityStart);
+        if (priorityEnd < 0) priorityEnd = params.length();
+        priority = params.subString(priorityStart, priorityEnd);
+        data.put("priority", priority);
+    }
+    
+    // Parse due date
+    if (params.contains("due:")) {
+        dueStart = params.indexOf("due:") + 4;
+        dueEnd = params.indexOf(" ", dueStart);
+        if (dueEnd < 0) dueEnd = params.length();
+        dueDate = params.subString(dueStart, dueEnd);
+        data.put("dueDate", dueDate);
+    }
+    
+    // Parse tags
+    if (params.contains("tags:")) {
+        tagsStart = params.indexOf("tags:") + 5;
+        tagsEnd = params.indexOf(" ", tagsStart);
+        if (tagsEnd < 0) tagsEnd = params.length();
+        tags = params.subString(tagsStart, tagsEnd);
+        data.put("tags", tags);
+    }
+    
+    return data;
+}
+
+// Parse filters
+Map parseFilters(String params) {
+    filters = Map();
+    
+    if (params.contains("status:")) {
+        statusStart = params.indexOf("status:") + 7;
+        statusEnd = params.indexOf(" ", statusStart);
+        if (statusEnd < 0) statusEnd = params.length();
+        filters.put("status", params.subString(statusStart, statusEnd));
+    }
+    
+    if (params.contains("priority:")) {
+        priorityStart = params.indexOf("priority:") + 9;
+        priorityEnd = params.indexOf(" ", priorityStart);
+        if (priorityEnd < 0) priorityEnd = params.length();
+        filters.put("priority", params.subString(priorityStart, priorityEnd));
+    }
+    
+    if (params.contains("project:")) {
+        projectStart = params.indexOf("project:") + 8;
+        projectEnd = params.indexOf(" ", projectStart);
+        if (projectEnd < 0) projectEnd = params.length();
+        filters.put("projectId", params.subString(projectStart, projectEnd));
+    }
+    
+    return filters;
+}
+
+// Build query string
+String buildQueryString(Map filters) {
+    queryParts = List();
+    
+    for each key in filters.keys() {
+        value = filters.get(key);
+        queryParts.add(key + "=" + value);
+    }
+    
+    return queryParts.toString("&");
+}
+
+// Get help text
+String getHelpText() {
+    return "**Tasker Commands:**\n\n" +
+        "**Task Management:**\n" +
+        "• `/tasker create \"title\" priority:high due:2025-12-01` - Create task\n" +
+        "• `/tasker list status:pending priority:high` - List tasks\n" +
+        "• `/tasker my tasks` - Show your assigned tasks\n" +
+        "• `/tasker complete task_id` - Mark task complete\n" +
+        "• `/tasker assign task_id @user` - Assign task\n" +
+        "• `/tasker search \"keyword\"` - Search tasks\n\n" +
+        "**Project Management:**\n" +
+        "• `/tasker projects` - List your projects\n" +
+        "• `/tasker project create \"name\"` - Create project\n\n" +
+        "**Quick Filters:**\n" +
+        "• `/tasker overdue` - Show overdue tasks\n" +
+        "• `/tasker due today` - Tasks due today\n" +
+        "• `/tasker high priority` - High priority tasks\n\n" +
+        "Type `/tasker <command> help` for more info on a specific command.";
+}
