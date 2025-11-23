@@ -439,11 +439,11 @@ exports.createProject = async (req, res) => {
 
 /**
  * List Projects Command
- * GET /api/cliq/commands/list-projects?userId=user123
+ * GET /api/cliq/commands/list-projects?userId=user123&email=user@example.com
  */
 exports.listProjects = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, email } = req.query;
 
     if (!userId) {
       return res.status(400).json({
@@ -453,20 +453,50 @@ exports.listProjects = async (req, res) => {
       });
     }
 
-    const snapshot = await getDb().collection('projects')
-      .where('members', 'array-contains', userId)
-      .orderBy('createdAt', 'desc')
-      .get();
+    // Try to get mapped Firebase user ID first
+    const cliqService = require('../services/cliqService');
+    let firebaseUserId = await cliqService.mapCliqUserToTasker(userId);
     
-    const projects = [];
-    snapshot.forEach(doc => {
-      projects.push({
-        projectId: doc.id,
-        ...doc.data()
-      });
-    });
+    // If no mapping exists and email provided, try to find by email
+    if (!firebaseUserId && email) {
+      const userSnapshot = await getDb().collection('users')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+      
+      if (!userSnapshot.empty) {
+        firebaseUserId = userSnapshot.docs[0].id;
+        logger.info(`Found Firebase user by email: ${email} -> ${firebaseUserId}`);
+      }
+    }
 
-    logger.info(`Listed ${projects.length} projects for user ${userId}`);
+    // Query with both IDs to get all projects
+    const queries = [userId];
+    if (firebaseUserId && firebaseUserId !== userId) {
+      queries.push(firebaseUserId);
+    }
+
+    const allProjects = new Map();
+    
+    for (const queryUserId of queries) {
+      const snapshot = await getDb().collection('projects')
+        .where('members', 'array-contains', queryUserId)
+        .orderBy('createdAt', 'desc')
+        .get();
+      
+      snapshot.forEach(doc => {
+        if (!allProjects.has(doc.id)) {
+          allProjects.set(doc.id, {
+            projectId: doc.id,
+            ...doc.data()
+          });
+        }
+      });
+    }
+
+    const projects = Array.from(allProjects.values());
+
+    logger.info(`Listed ${projects.length} projects for user ${userId} (Firebase: ${firebaseUserId})`);
 
     const card = formatListCard(projects, 'projects');
 

@@ -1,0 +1,82 @@
+/**
+ * Zoho Cliq Suggestion Handler: /tasker
+ * 
+ * Provides smart command suggestions as users type the /tasker command
+ * Shows helpful tips and common command patterns
+ * 
+ * This handler is triggered when users start typing /tasker in Cliq
+ */
+
+list = List();
+
+// Suggestion 1: Create Task
+entry1 = Map();
+entry1.put("title", "✍️ Create a new task");
+entry1.put("description", "/tasker create \"Task title\" priority:high due:2025-12-31");
+entry1.put("imageurl", "https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif");
+list.add(entry1);
+
+// Suggestion 2: List Tasks
+entry2 = Map();
+entry2.put("title", "📋 List your tasks");
+entry2.put("description", "/tasker list status:pending priority:high");
+entry2.put("imageurl", "https://media.giphy.com/media/xT9C25UNTwfZuk85WP/giphy.gif");
+list.add(entry2);
+
+// Suggestion 3: My Tasks
+entry3 = Map();
+entry3.put("title", "👤 View assigned tasks");
+entry3.put("description", "/tasker my tasks");
+entry3.put("imageurl", "https://media.giphy.com/media/3o7TKTDn976rzVgky4/giphy.gif");
+list.add(entry3);
+
+// Suggestion 4: Complete Task
+entry4 = Map();
+entry4.put("title", "✅ Mark task complete");
+entry4.put("description", "/tasker complete <task_id>");
+entry4.put("imageurl", "https://media.giphy.com/media/111ebonMs90YLu/giphy.gif");
+list.add(entry4);
+
+// Suggestion 5: Assign Task
+entry5 = Map();
+entry5.put("title", "👥 Assign task to teammate");
+entry5.put("description", "/tasker assign <task_id> @username");
+entry5.put("imageurl", "https://media.giphy.com/media/3o7TKre2pXE2DeUVP2/giphy.gif");
+list.add(entry5);
+
+// Suggestion 6: Search Tasks
+entry6 = Map();
+entry6.put("title", "🔍 Search your tasks");
+entry6.put("description", "/tasker search \"keyword\"");
+entry6.put("imageurl", "https://media.giphy.com/media/l46Cy1rHbQ92uuLXa/giphy.gif");
+list.add(entry6);
+
+// Suggestion 7: List Projects
+entry7 = Map();
+entry7.put("title", "📁 View projects");
+entry7.put("description", "/tasker projects");
+entry7.put("imageurl", "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif");
+list.add(entry7);
+
+// Suggestion 8: Create Project
+entry8 = Map();
+entry8.put("title", "🚀 Create new project");
+entry8.put("description", "/tasker project create \"Project Name\"");
+entry8.put("imageurl", "https://media.giphy.com/media/3o7btNa0RUYa5E7iiQ/giphy.gif");
+list.add(entry8);
+
+// Suggestion 9: Overdue Tasks
+entry9 = Map();
+entry9.put("title", "⏰ Check overdue tasks");
+entry9.put("description", "/tasker overdue");
+entry9.put("imageurl", "https://media.giphy.com/media/xUOxfgwY8Tvj1DY5y0/giphy.gif");
+list.add(entry9);
+
+// Suggestion 10: Help
+entry10 = Map();
+entry10.put("title", "❓ View all commands");
+entry10.put("description", "/tasker (shows complete help menu)");
+entry10.put("imageurl", "https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif");
+list.add(entry10);
+
+return list;
