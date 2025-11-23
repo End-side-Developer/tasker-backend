@@ -98,16 +98,16 @@ Copy and paste these commands one by one in Cliq:
 
 Base URL: `https://tasker-backend-b10p.onrender.com/api/cliq/commands`
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/create-task` | Create new task |
-| GET | `/list-tasks` | List tasks with filters |
-| POST | `/assign-task` | Assign task to user |
-| POST | `/complete-task` | Mark task complete |
-| GET | `/search` | Search tasks |
-| POST | `/create-project` | Create project |
-| GET | `/list-projects` | List projects |
-| POST | `/invite-member` | Send invitation |
+| Method | Endpoint          | Purpose                 |
+| ------ | ----------------- | ----------------------- |
+| POST   | `/create-task`    | Create new task         |
+| GET    | `/list-tasks`     | List tasks with filters |
+| POST   | `/assign-task`    | Assign task to user     |
+| POST   | `/complete-task`  | Mark task complete      |
+| GET    | `/search`         | Search tasks            |
+| POST   | `/create-project` | Create project          |
+| GET    | `/list-projects`  | List projects           |
+| POST   | `/invite-member`  | Send invitation         |
 
 ---
 
@@ -137,13 +137,13 @@ Base URL: `https://tasker-backend-b10p.onrender.com/api/cliq/commands`
 
 ## 🐛 Quick Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| "Failed to connect" | Check if backend is deployed: `https://tasker-backend-b10p.onrender.com/api/health` |
-| "Task not found" | Verify Firestore collections exist |
-| "Authentication failed" | Check API key in Cliq code matches .env |
-| No response | Check Render logs for errors |
-| Commands don't work | Verify Cliq command code was updated |
+| Issue                   | Solution                                                                            |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| "Failed to connect"     | Check if backend is deployed: `https://tasker-backend-b10p.onrender.com/api/health` |
+| "Task not found"        | Verify Firestore collections exist                                                  |
+| "Authentication failed" | Check API key in Cliq code matches .env                                             |
+| No response             | Check Render logs for errors                                                        |
+| Commands don't work     | Verify Cliq command code was updated                                                |
 
 ---
 

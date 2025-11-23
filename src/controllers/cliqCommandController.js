@@ -1,9 +1,10 @@
-const admin = require('firebase-admin');
+const { admin } = require('../config/firebase');
 const { validateTaskData, validateProjectData } = require('../utils/validators');
 const { formatTaskCard, formatProjectCard, formatListCard } = require('../utils/cardFormatter');
 const logger = require('../config/logger');
 
-const db = admin.firestore();
+// Get Firestore instance (lazy initialization)
+const getDb = () => admin.firestore();
 
 /**
  * Create Task Command
@@ -32,7 +33,7 @@ exports.createTask = async (req, res) => {
     }
 
     // Create task document
-    const taskRef = db.collection('tasks').doc();
+    const taskRef = getDb().collection('tasks').doc();
     const taskId = taskRef.id;
 
     const taskData = {
@@ -107,7 +108,7 @@ exports.listTasks = async (req, res) => {
       limit = 10 
     } = req.query;
 
-    let query = db.collection('tasks');
+    let query = getDb().collection('tasks');
 
     // Apply filters
     if (status) {
@@ -180,7 +181,7 @@ exports.assignTask = async (req, res) => {
       });
     }
 
-    const taskRef = db.collection('tasks').doc(taskId);
+    const taskRef = getDb().collection('tasks').doc(taskId);
     const taskDoc = await taskRef.get();
 
     if (!taskDoc.exists) {
@@ -250,7 +251,7 @@ exports.completeTask = async (req, res) => {
       });
     }
 
-    const taskRef = db.collection('tasks').doc(taskId);
+    const taskRef = getDb().collection('tasks').doc(taskId);
     const taskDoc = await taskRef.get();
 
     if (!taskDoc.exists) {
@@ -320,7 +321,7 @@ exports.searchTasks = async (req, res) => {
     }
 
     // Search in title and description
-    const tasksRef = db.collection('tasks');
+    const tasksRef = getDb().collection('tasks');
     let queryRef = tasksRef;
 
     if (userId) {
@@ -385,7 +386,7 @@ exports.createProject = async (req, res) => {
       });
     }
 
-    const projectRef = db.collection('projects').doc();
+    const projectRef = getDb().collection('projects').doc();
     const projectId = projectRef.id;
 
     const projectData = {
@@ -452,7 +453,7 @@ exports.listProjects = async (req, res) => {
       });
     }
 
-    const snapshot = await db.collection('projects')
+    const snapshot = await getDb().collection('projects')
       .where('members', 'array-contains', userId)
       .orderBy('createdAt', 'desc')
       .get();
@@ -505,7 +506,7 @@ exports.inviteMember = async (req, res) => {
     }
 
     // Check if project exists
-    const projectDoc = await db.collection('projects').doc(projectId).get();
+    const projectDoc = await getDb().collection('projects').doc(projectId).get();
     
     if (!projectDoc.exists) {
       return res.status(404).json({
@@ -518,7 +519,7 @@ exports.inviteMember = async (req, res) => {
     const projectData = projectDoc.data();
 
     // Create invitation
-    const invitationRef = db.collection('invitations').doc();
+    const invitationRef = getDb().collection('invitations').doc();
     const invitationData = {
       invitationId: invitationRef.id,
       projectId,

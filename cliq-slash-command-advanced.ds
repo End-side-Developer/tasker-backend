@@ -28,11 +28,28 @@ headers.put("Content-Type", "application/json");
 userContext = Map();
 userContext.put("userId", user.get("id"));
 userContext.put("userName", user.get("name"));
-userContext.put("channelId", channel.get("id"));
+userContext.put("channelId", "");
 
 // Parse command
 if (arguments.isEmpty()) {
-    response.put("text", getHelpText());
+    helpText = "**Tasker Commands:**\n\n" +
+        "**Task Management:**\n" +
+        "• `/tasker create \"title\" priority:high due:2025-12-01` - Create task\n" +
+        "• `/tasker list status:pending priority:high` - List tasks\n" +
+        "• `/tasker my tasks` - Show your assigned tasks\n" +
+        "• `/tasker complete task_id` - Mark task complete\n" +
+        "• `/tasker assign task_id @user` - Assign task\n" +
+        "• `/tasker search \"keyword\"` - Search tasks\n\n" +
+        "**Project Management:**\n" +
+        "• `/tasker projects` - List your projects\n" +
+        "• `/tasker project create \"name\"` - Create project\n\n" +
+        "**Quick Filters:**\n" +
+        "• `/tasker overdue` - Show overdue tasks\n" +
+        "• `/tasker due today` - Tasks due today\n" +
+        "• `/tasker high priority` - High priority tasks\n\n" +
+        "Type `/tasker <command> help` for more info on a specific command.";
+    
+    response.put("text", helpText);
     return response;
 }
 
@@ -52,7 +69,65 @@ if (spaceIndex > 0) {
 if (command.equalsIgnoreCase("create")) {
     try {
         // Parse: /tasker create "Task Title" priority:high due:2025-12-01 tags:bug,urgent
-        taskData = parseCreateCommand(params);
+        taskData = Map();
+        
+        // Extract title
+        titleEnd = params.indexOf(" priority:");
+        if (titleEnd < 0) {
+            titleEnd = params.indexOf(" due:");
+        }
+        if (titleEnd < 0) {
+            titleEnd = params.indexOf(" tags:");
+        }
+        if (titleEnd < 0) {
+            titleEnd = params.length();
+        }
+        
+        title = params.subString(0, titleEnd).trim();
+        
+        // Remove quotes
+        if (title.startsWith("\"")) {
+            endQuote = title.indexOf("\"", 1);
+            if (endQuote > 0) {
+                title = title.subString(1, endQuote);
+            }
+        }
+        
+        taskData.put("title", title);
+        
+        // Parse priority
+        if (params.contains("priority:")) {
+            priorityStart = params.indexOf("priority:") + 9;
+            priorityEnd = params.indexOf(" ", priorityStart);
+            if (priorityEnd < 0) {
+                priorityEnd = params.length();
+            }
+            priority = params.subString(priorityStart, priorityEnd);
+            taskData.put("priority", priority);
+        }
+        
+        // Parse due date
+        if (params.contains("due:")) {
+            dueStart = params.indexOf("due:") + 4;
+            dueEnd = params.indexOf(" ", dueStart);
+            if (dueEnd < 0) {
+                dueEnd = params.length();
+            }
+            dueDate = params.subString(dueStart, dueEnd);
+            taskData.put("dueDate", dueDate);
+        }
+        
+        // Parse tags
+        if (params.contains("tags:")) {
+            tagsStart = params.indexOf("tags:") + 5;
+            tagsEnd = params.indexOf(" ", tagsStart);
+            if (tagsEnd < 0) {
+                tagsEnd = params.length();
+            }
+            tags = params.subString(tagsStart, tagsEnd);
+            taskData.put("tags", tags);
+        }
+        
         taskData.put("cliqContext", userContext);
         
         apiResponse = invokeUrl [
@@ -81,11 +156,47 @@ if (command.equalsIgnoreCase("create")) {
 else if (command.equalsIgnoreCase("list")) {
     try {
         // Parse filters from params
-        filters = parseFilters(params);
+        filters = Map();
+        
+        if (params.contains("status:")) {
+            statusStart = params.indexOf("status:") + 7;
+            statusEnd = params.indexOf(" ", statusStart);
+            if (statusEnd < 0) {
+                statusEnd = params.length();
+            }
+            filters.put("status", params.subString(statusStart, statusEnd));
+        }
+        
+        if (params.contains("priority:")) {
+            priorityStart = params.indexOf("priority:") + 9;
+            priorityEnd = params.indexOf(" ", priorityStart);
+            if (priorityEnd < 0) {
+                priorityEnd = params.length();
+            }
+            filters.put("priority", params.subString(priorityStart, priorityEnd));
+        }
+        
+        if (params.contains("project:")) {
+            projectStart = params.indexOf("project:") + 8;
+            projectEnd = params.indexOf(" ", projectStart);
+            if (projectEnd < 0) {
+                projectEnd = params.length();
+            }
+            filters.put("projectId", params.subString(projectStart, projectEnd));
+        }
+        
         filters.put("userId", user.get("id"));
         
+        // Build query string
+        queryParts = List();
+        for each key in filters.keys() {
+            value = filters.get(key);
+            queryParts.add(key + "=" + value);
+        }
+        queryString = queryParts.toString("&");
+        
         apiResponse = invokeUrl [
-            url: BASE_URL + "/list-tasks?" + buildQueryString(filters)
+            url: BASE_URL + "/list-tasks?" + queryString
             type: GET
             headers: headers
         ];
@@ -172,15 +283,15 @@ else if (command.equalsIgnoreCase("complete")) {
 else if (command.equalsIgnoreCase("assign")) {
     try {
         // Parse: /tasker assign task_123 @john
-        parts = params.split(" ");
+        spaceIdx = params.indexOf(" ");
         
-        if (parts.size() < 2) {
+        if (spaceIdx < 0) {
             response.put("text", "❌ Usage: `/tasker assign <task_id> @username`");
             return response;
         }
         
-        taskId = parts.get(0);
-        assignee = parts.get(1);
+        taskId = params.subString(0, spaceIdx).trim();
+        assignee = params.subString(spaceIdx + 1, params.length()).trim();
         
         // Remove @ if present
         if (assignee.startsWith("@")) {
@@ -349,110 +460,7 @@ else if (command.equalsIgnoreCase("overdue")) {
 // Unknown command
 // ===========================================
 else {
-    response.put("text", "❌ Unknown command: `" + command + "`\n\n" + getHelpText());
-}
-
-return response;
-
-// ===========================================
-// Helper Functions
-// ===========================================
-
-// Parse create command
-Map parseCreateCommand(String params) {
-    data = Map();
-    
-    // Extract title (first part in quotes or until first key:value)
-    titleEnd = params.indexOf(" priority:");
-    if (titleEnd < 0) titleEnd = params.indexOf(" due:");
-    if (titleEnd < 0) titleEnd = params.indexOf(" tags:");
-    if (titleEnd < 0) titleEnd = params.length();
-    
-    title = params.subString(0, titleEnd).trim();
-    
-    // Remove quotes
-    if (title.startsWith("\"")) {
-        endQuote = title.indexOf("\"", 1);
-        if (endQuote > 0) {
-            title = title.subString(1, endQuote);
-        }
-    }
-    
-    data.put("title", title);
-    
-    // Parse priority
-    if (params.contains("priority:")) {
-        priorityStart = params.indexOf("priority:") + 9;
-        priorityEnd = params.indexOf(" ", priorityStart);
-        if (priorityEnd < 0) priorityEnd = params.length();
-        priority = params.subString(priorityStart, priorityEnd);
-        data.put("priority", priority);
-    }
-    
-    // Parse due date
-    if (params.contains("due:")) {
-        dueStart = params.indexOf("due:") + 4;
-        dueEnd = params.indexOf(" ", dueStart);
-        if (dueEnd < 0) dueEnd = params.length();
-        dueDate = params.subString(dueStart, dueEnd);
-        data.put("dueDate", dueDate);
-    }
-    
-    // Parse tags
-    if (params.contains("tags:")) {
-        tagsStart = params.indexOf("tags:") + 5;
-        tagsEnd = params.indexOf(" ", tagsStart);
-        if (tagsEnd < 0) tagsEnd = params.length();
-        tags = params.subString(tagsStart, tagsEnd);
-        data.put("tags", tags);
-    }
-    
-    return data;
-}
-
-// Parse filters
-Map parseFilters(String params) {
-    filters = Map();
-    
-    if (params.contains("status:")) {
-        statusStart = params.indexOf("status:") + 7;
-        statusEnd = params.indexOf(" ", statusStart);
-        if (statusEnd < 0) statusEnd = params.length();
-        filters.put("status", params.subString(statusStart, statusEnd));
-    }
-    
-    if (params.contains("priority:")) {
-        priorityStart = params.indexOf("priority:") + 9;
-        priorityEnd = params.indexOf(" ", priorityStart);
-        if (priorityEnd < 0) priorityEnd = params.length();
-        filters.put("priority", params.subString(priorityStart, priorityEnd));
-    }
-    
-    if (params.contains("project:")) {
-        projectStart = params.indexOf("project:") + 8;
-        projectEnd = params.indexOf(" ", projectStart);
-        if (projectEnd < 0) projectEnd = params.length();
-        filters.put("projectId", params.subString(projectStart, projectEnd));
-    }
-    
-    return filters;
-}
-
-// Build query string
-String buildQueryString(Map filters) {
-    queryParts = List();
-    
-    for each key in filters.keys() {
-        value = filters.get(key);
-        queryParts.add(key + "=" + value);
-    }
-    
-    return queryParts.toString("&");
-}
-
-// Get help text
-String getHelpText() {
-    return "**Tasker Commands:**\n\n" +
+    helpText = "**Tasker Commands:**\n\n" +
         "**Task Management:**\n" +
         "• `/tasker create \"title\" priority:high due:2025-12-01` - Create task\n" +
         "• `/tasker list status:pending priority:high` - List tasks\n" +
@@ -468,4 +476,8 @@ String getHelpText() {
         "• `/tasker due today` - Tasks due today\n" +
         "• `/tasker high priority` - High priority tasks\n\n" +
         "Type `/tasker <command> help` for more info on a specific command.";
+    
+    response.put("text", "❌ Unknown command: `" + command + "`\n\n" + helpText);
 }
+
+return response;
