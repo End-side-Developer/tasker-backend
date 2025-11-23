@@ -32,6 +32,26 @@ exports.createTask = async (req, res) => {
       });
     }
 
+    // Try to get mapped Firebase user ID first
+    const cliqService = require('../services/cliqService');
+    let firebaseUserId = await cliqService.mapCliqUserToTasker(cliqContext.userId);
+    
+    // If no mapping exists and email provided, try to find by email
+    if (!firebaseUserId && cliqContext.userEmail) {
+      const userSnapshot = await getDb().collection('users')
+        .where('email', '==', cliqContext.userEmail)
+        .limit(1)
+        .get();
+      
+      if (!userSnapshot.empty) {
+        firebaseUserId = userSnapshot.docs[0].id;
+        logger.info(`Found Firebase user by email for task creation: ${cliqContext.userEmail} -> ${firebaseUserId}`);
+      }
+    }
+
+    // Use Firebase user ID if found, otherwise fall back to Cliq user ID
+    const actualUserId = firebaseUserId || cliqContext.userId;
+
     // Create task document
     const taskRef = getDb().collection('tasks').doc();
     const taskId = taskRef.id;
@@ -46,13 +66,14 @@ exports.createTask = async (req, res) => {
       tags: Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()),
       dueDate: dueDate ? new Date(dueDate) : null,
       assignedTo: assignedTo || null,
-      createdBy: cliqContext.userId,
+      createdBy: actualUserId,
       createdByName: cliqContext.userName,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       cliqContext: {
         userId: cliqContext.userId,
         userName: cliqContext.userName,
+        userEmail: cliqContext.userEmail,
         channelId: cliqContext.channelId || null,
         messageId: cliqContext.messageId || null
       }
@@ -60,7 +81,7 @@ exports.createTask = async (req, res) => {
 
     await taskRef.set(taskData);
 
-    logger.info(`Task created via Cliq: ${taskId} by ${cliqContext.userName}`);
+    logger.info(`Task created via Cliq: ${taskId} by ${cliqContext.userName} (Firebase ID: ${actualUserId})`);
 
     // Format response with rich card
     const card = formatTaskCard({
@@ -376,7 +397,7 @@ exports.searchTasks = async (req, res) => {
  */
 exports.createProject = async (req, res) => {
   try {
-    const { name, description, color, icon, createdBy, createdByName } = req.body;
+    const { name, description, color, icon, createdBy, createdByName, email } = req.body;
 
     if (!name || !createdBy) {
       return res.status(400).json({
@@ -385,6 +406,26 @@ exports.createProject = async (req, res) => {
         text: '❌ Please provide a project name'
       });
     }
+
+    // Try to get mapped Firebase user ID first
+    const cliqService = require('../services/cliqService');
+    let firebaseUserId = await cliqService.mapCliqUserToTasker(createdBy);
+    
+    // If no mapping exists and email provided, try to find by email
+    if (!firebaseUserId && email) {
+      const userSnapshot = await getDb().collection('users')
+        .where('email', '==', email)
+        .limit(1)
+        .get();
+      
+      if (!userSnapshot.empty) {
+        firebaseUserId = userSnapshot.docs[0].id;
+        logger.info(`Found Firebase user by email for project creation: ${email} -> ${firebaseUserId}`);
+      }
+    }
+
+    // Use Firebase user ID if found, otherwise fall back to Cliq user ID
+    const actualUserId = firebaseUserId || createdBy;
 
     const projectRef = getDb().collection('projects').doc();
     const projectId = projectRef.id;
@@ -395,11 +436,11 @@ exports.createProject = async (req, res) => {
       description: description || '',
       color: color || 'blue',
       icon: icon || '📁',
-      ownerId: createdBy,
+      ownerId: actualUserId,
       ownerName: createdByName || 'User',
-      members: [createdBy],
+      members: [actualUserId],
       memberRoles: {
-        [createdBy]: 'owner'
+        [actualUserId]: 'owner'
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -407,7 +448,7 @@ exports.createProject = async (req, res) => {
 
     await projectRef.set(projectData);
 
-    logger.info(`Project created via Cliq: ${projectId} by ${createdByName}`);
+    logger.info(`Project created via Cliq: ${projectId} by ${createdByName} (Firebase ID: ${actualUserId})`);
 
     const card = formatProjectCard({
       ...projectData,

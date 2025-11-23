@@ -410,6 +410,7 @@ else if(command.equalsIgnoreCase("project") && params.toLowerCase().startsWith("
 		payload.put("name",projectName);
 		payload.put("createdBy",user.get("id"));
 		payload.put("createdByName",user.get("name"));
+		payload.put("email",user.get("email"));
 		apiResponse = invokeurl
 		[
 			url :BASE_URL + "/create-project"
