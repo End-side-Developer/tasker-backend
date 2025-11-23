@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { verifyAuth } = require('../middleware/auth');
 const { 
   createTask, 
   listTasks, 
@@ -18,15 +18,15 @@ const {
  */
 
 // Task Management Commands
-router.post('/create-task', authenticate, createTask);
-router.get('/list-tasks', authenticate, listTasks);
-router.post('/assign-task', authenticate, assignTask);
-router.post('/complete-task', authenticate, completeTask);
-router.get('/search', authenticate, searchTasks);
+router.post('/create-task', verifyAuth, createTask);
+router.get('/list-tasks', verifyAuth, listTasks);
+router.post('/assign-task', verifyAuth, assignTask);
+router.post('/complete-task', verifyAuth, completeTask);
+router.get('/search', verifyAuth, searchTasks);
 
 // Project Management Commands
-router.post('/create-project', authenticate, createProject);
-router.get('/list-projects', authenticate, listProjects);
-router.post('/invite-member', authenticate, inviteMember);
+router.post('/create-project', verifyAuth, createProject);
+router.get('/list-projects', verifyAuth, listProjects);
+router.post('/invite-member', verifyAuth, inviteMember);
 
 module.exports = router;
