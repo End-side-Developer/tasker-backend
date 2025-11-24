@@ -551,12 +551,25 @@ exports.listProjects = async (req, res) => {
 
     const card = formatListCard(projects, 'projects');
 
+    // Build formatted text with project names
+    let textResponse = `📁 You have ${projects.length} project(s)\n\n`;
+    if (projects.length > 0) {
+      const displayProjects = projects.slice(0, 10);
+      displayProjects.forEach((project, index) => {
+        const memberCount = project.members?.length || 0;
+        textResponse += `${index + 1}. ${project.name} - ${memberCount} member${memberCount !== 1 ? 's' : ''}\n`;
+      });
+      if (projects.length > 10) {
+        textResponse += `\n... and ${projects.length - 10} more projects`;
+      }
+    }
+
     res.json({
       success: true,
       message: `Found ${projects.length} project(s)`,
       data: projects,
       card,
-      text: `📁 You have ${projects.length} project(s)`
+      text: textResponse.trim()
     });
 
   } catch (error) {
