@@ -29,11 +29,198 @@ userContext.put("userName",user.get("name"));
 userContext.put("userEmail",user.get("email"));
 userContext.put("channelId","");
 // Parse command
+
+// ========================================
+// HANDLE SUGGESTION SELECTIONS (Click to Execute)
+// ========================================
+if(selections.size() > 0)
+{
+	// User clicked on a suggestion, get the selected title
+	selectedSuggestion = selections.get(0).toMap();
+	arguments = selectedSuggestion.get("title");
+	// Now process this as a normal command
+}
+
 if(arguments=="")
 {
-	helpText = "**Tasker Commands:**\n\n" + "**Task Management:**\n" + "• `/tasker create \"title\" priority:high due:2025-12-01` - Create task\n" + "• `/tasker list status:pending priority:high` - List tasks\n" + "• `/tasker my tasks` - Show your assigned tasks\n" + "• `/tasker complete task_id` - Mark task complete\n" + "• `/tasker assign task_id @user` - Assign task\n" + "• `/tasker search \"keyword\"` - Search tasks\n\n" + "**Project Management:**\n" + "• `/tasker projects` - List your projects\n" + "• `/tasker project create \"name\"` - Create project\n\n" + "**Quick Filters:**\n" + "• `/tasker overdue` - Show overdue tasks\n" + "• `/tasker due today` - Tasks due today\n" + "• `/tasker high priority` - High priority tasks\n\n" + "Type `/tasker <command> help` for more info on a specific command.";
-	response.put("text",helpText);
-	return response;
+	response.put("text","Below are commands that you can use directly by clicking on them");
+	bot = map();
+	bot.put("name","Tasker by Mantra");
+	response.put("bot",bot);
+	card = map();
+	card.put("title","Commands");
+	card.put("theme","modern-inline");
+	response.put("card",card);
+	slidesList = list();
+
+	// Task Management
+    slidesList0 = map();
+    slidesList0.put("type","text");
+    slidesList0.put("title","Task Management");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Create Task");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList0.put("buttons",buttonsList);
+    slidesList0.put("data","1. Create Task");
+    slidesList.add(slidesList0);
+
+    slidesList1 = map();
+    slidesList1.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","List Task");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList1.put("buttons",buttonsList);
+    slidesList1.put("data","2. List Task");
+    slidesList.add(slidesList1);
+
+    slidesList2 = map();
+    slidesList2.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","My Tasks");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList2.put("buttons",buttonsList);
+    slidesList2.put("data","3. Show your assigned tasks");
+    slidesList.add(slidesList2);
+
+    slidesList3 = map();
+    slidesList3.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Complete Task");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList3.put("buttons",buttonsList);
+    slidesList3.put("data","4. Mark task complete");
+    slidesList.add(slidesList3);
+
+    slidesList4 = map();
+    slidesList4.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Assign Task");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList4.put("buttons",buttonsList);
+    slidesList4.put("data","5. Assign task");
+    slidesList.add(slidesList4);
+
+    slidesList5 = map();
+    slidesList5.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Search Tasks");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList5.put("buttons",buttonsList);
+    slidesList5.put("data","6. Search tasks");
+    slidesList.add(slidesList5);
+
+    // Project Management
+    slidesList6 = map();
+    slidesList6.put("type","text");
+    slidesList6.put("title","Project Management");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Projects List");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList6.put("buttons",buttonsList);
+    slidesList6.put("data","1. List your projects");
+    slidesList.add(slidesList6);
+
+    slidesList7 = map();
+    slidesList7.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Create Project");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList7.put("buttons",buttonsList);
+    slidesList7.put("data","2. Create project");
+    slidesList.add(slidesList7);
+
+    // Quick Filters
+    slidesList8 = map();
+    slidesList8.put("type","text");
+    slidesList8.put("title","Quick Filters");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","Overdue Tasks");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList8.put("buttons",buttonsList);
+    slidesList8.put("data","1. Show overdue tasks");
+    slidesList.add(slidesList8);
+
+    slidesList9 = map();
+    slidesList9.put("type","text");
+    buttonsList = list();
+    buttonsList0 = map();
+    buttonsList0.put("label","High Priority");
+    action = map();
+    action.put("type","open.url");
+    data = map();
+    data.put("web","https://cliq.zoho.com");
+    action.put("data",data);
+    buttonsList0.put("action",action);
+    buttonsList.add(buttonsList0);
+    slidesList9.put("buttons",buttonsList);
+    slidesList9.put("data","2. High priority tasks");
+    slidesList.add(slidesList9);
+
+    response.put("slides",slidesList);
+    return response;
 }
 // Extract command and parameters
 spaceIndex = arguments.indexOf(" ");
@@ -465,7 +652,184 @@ else if(command.equalsIgnoreCase("overdue"))
 // ===========================================
 else
 {
-	helpText = "**Tasker Commands:**\n\n" + "**Task Management:**\n" + "• `/tasker create \"title\" priority:high due:2025-12-01` - Create task\n" + "• `/tasker list status:pending priority:high` - List tasks\n" + "• `/tasker my tasks` - Show your assigned tasks\n" + "• `/tasker complete task_id` - Mark task complete\n" + "• `/tasker assign task_id @user` - Assign task\n" + "• `/tasker search \"keyword\"` - Search tasks\n\n" + "**Project Management:**\n" + "• `/tasker projects` - List your projects\n" + "• `/tasker project create \"name\"` - Create project\n\n" + "**Quick Filters:**\n" + "• `/tasker overdue` - Show overdue tasks\n" + "• `/tasker due today` - Tasks due today\n" + "• `/tasker high priority` - High priority tasks\n\n" + "Type `/tasker <command> help` for more info on a specific command.";
-	response.put("text","❌ Unknown command: `" + command + "`\n\n" + helpText);
+	response = map();
+	response.put("text","❌ Unknown command: `" + command + "`\n\nBelow are commands that you can use directly by clicking on them");
+	bot = map();
+	bot.put("name","Tasker by Mantra");
+	response.put("bot",bot);
+	card = map();
+	card.put("title","Commands");
+	card.put("theme","modern-inline");
+	response.put("card",card);
+	slidesList = list();
+
+	// Task Management
+	slidesList0 = map();
+	slidesList0.put("type","text");
+	slidesList0.put("title","Task Management");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Create Task");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList0.put("buttons",buttonsList);
+	slidesList0.put("data","1. Create Task");
+	slidesList.add(slidesList0);
+
+	slidesList1 = map();
+	slidesList1.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","List Task");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList1.put("buttons",buttonsList);
+	slidesList1.put("data","2. List Task");
+	slidesList.add(slidesList1);
+
+	slidesList2 = map();
+	slidesList2.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","My Tasks");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList2.put("buttons",buttonsList);
+	slidesList2.put("data","3. Show your assigned tasks");
+	slidesList.add(slidesList2);
+
+	slidesList3 = map();
+	slidesList3.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Complete Task");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList3.put("buttons",buttonsList);
+	slidesList3.put("data","4. Mark task complete");
+	slidesList.add(slidesList3);
+
+	slidesList4 = map();
+	slidesList4.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Assign Task");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList4.put("buttons",buttonsList);
+	slidesList4.put("data","5. Assign task");
+	slidesList.add(slidesList4);
+
+	slidesList5 = map();
+	slidesList5.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Search Tasks");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList5.put("buttons",buttonsList);
+	slidesList5.put("data","6. Search tasks");
+	slidesList.add(slidesList5);
+
+	// Project Management
+	slidesList6 = map();
+	slidesList6.put("type","text");
+	slidesList6.put("title","Project Management");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Projects List");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList6.put("buttons",buttonsList);
+	slidesList6.put("data","1. List your projects");
+	slidesList.add(slidesList6);
+
+	slidesList7 = map();
+	slidesList7.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Create Project");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList7.put("buttons",buttonsList);
+	slidesList7.put("data","2. Create project");
+	slidesList.add(slidesList7);
+
+	// Quick Filters
+	slidesList8 = map();
+	slidesList8.put("type","text");
+	slidesList8.put("title","Quick Filters");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","Overdue Tasks");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList8.put("buttons",buttonsList);
+	slidesList8.put("data","1. Show overdue tasks");
+	slidesList.add(slidesList8);
+
+	slidesList9 = map();
+	slidesList9.put("type","text");
+	buttonsList = list();
+	buttonsList0 = map();
+	buttonsList0.put("label","High Priority");
+	action = map();
+	action.put("type","open.url");
+	data = map();
+	data.put("web","https://cliq.zoho.com");
+	action.put("data",data);
+	buttonsList0.put("action",action);
+	buttonsList.add(buttonsList0);
+	slidesList9.put("buttons",buttonsList);
+	slidesList9.put("data","2. High priority tasks");
+	slidesList.add(slidesList9);
+
+	response.put("slides",slidesList);
+	return response;
 }
 return response;

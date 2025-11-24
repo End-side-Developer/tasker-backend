@@ -25,19 +25,22 @@ class TaskService {
       const taskId = taskRef.id;
 
       const task = {
-        id: taskId,
-        title: taskData.title,
-        description: taskData.description || '',
-        status: 'pending',
-        priority: taskData.priority || 'medium',
         projectId: taskData.projectId || null,
-        assignees: taskData.assignees || [],
+        title: taskData.title,
+        description: taskData.description || null,
+        isDescriptionEncrypted: false,
         dueDate: taskData.dueDate ? admin.firestore.Timestamp.fromDate(new Date(taskData.dueDate)) : null,
-        tags: taskData.tags || [],
-        createdBy: taskData.createdBy,
+        status: 'pending',
+        reminderEnabled: false,
+        assignees: taskData.assignees || [],
+        assignedBy: taskData.assignees?.length > 0 ? taskData.createdBy : null,
+        assignedAt: taskData.assignees?.length > 0 ? admin.firestore.FieldValue.serverTimestamp() : null,
+        recurrencePattern: 'none',
+        recurrenceInterval: 1,
+        recurrenceEndDate: null,
+        parentRecurringTaskId: null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        metadata: taskData.metadata || {},
+        updatedAt: null
       };
 
       await taskRef.set(task);
@@ -141,9 +144,9 @@ class TaskService {
   async completeTask(taskId, completedBy) {
     try {
       return await this.updateTask(taskId, {
-        status: 'completed',
-        completedAt: admin.firestore.FieldValue.serverTimestamp(),
-        completedBy,
+        status: 'completed'
+        // Note: completedAt and completedBy don't exist in schema
+        // updatedAt will be set by updateTask
       });
     } catch (error) {
       logger.error('Error completing task:', error);

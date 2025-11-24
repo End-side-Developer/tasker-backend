@@ -12,7 +12,7 @@ class TaskController {
    */
   async createTask(req, res, next) {
     try {
-      const { title, description, projectId, priority, dueDate, tags, cliqContext } = req.body;
+      const { title, description, projectId, dueDate, cliqContext } = req.body;
 
       // Map Cliq user to Tasker user
       let taskerUserId = await cliqService.mapCliqUserToTasker(cliqContext.userId);
@@ -33,16 +33,9 @@ class TaskController {
         title,
         description,
         projectId,
-        priority,
         dueDate,
-        tags,
         createdBy: taskerUserId,
-        assignees: [taskerUserId],
-        metadata: {
-          source: 'cliq',
-          cliq_user_id: cliqContext.userId,
-          cliq_channel_id: cliqContext.channelId,
-        },
+        assignees: [taskerUserId]
       });
 
       // Store Cliq mapping
@@ -58,7 +51,6 @@ class TaskController {
           id: task.id,
           title: task.title,
           status: task.status,
-          priority: task.priority,
           createdAt: task.createdAt,
         },
         card,

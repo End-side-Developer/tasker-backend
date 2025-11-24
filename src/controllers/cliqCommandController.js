@@ -57,46 +57,54 @@ exports.createTask = async (req, res) => {
     const taskId = taskRef.id;
 
     const taskData = {
-      taskId,
-      title,
-      description: description || '',
-      status: 'pending',
-      priority,
       projectId: projectId || null,
-      tags: Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()),
-      dueDate: dueDate ? new Date(dueDate) : null,
-      assignedTo: assignedTo || null,
-      createdBy: actualUserId,
-      createdByName: cliqContext.userName,
+      title,
+      description: description || null,
+      isDescriptionEncrypted: false,
+      dueDate: dueDate ? admin.firestore.Timestamp.fromDate(new Date(dueDate)) : null,
+      status: 'pending',
+      reminderEnabled: false,
+      assignees: assignedTo ? [assignedTo] : [],
+      assignedBy: assignedTo ? actualUserId : null,
+      assignedAt: assignedTo ? admin.firestore.FieldValue.serverTimestamp() : null,
+      recurrencePattern: 'none',
+      recurrenceInterval: 1,
+      recurrenceEndDate: null,
+      parentRecurringTaskId: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      cliqContext: {
-        userId: cliqContext.userId,
-        userName: cliqContext.userName,
-        userEmail: cliqContext.userEmail,
-        channelId: cliqContext.channelId || null,
-        messageId: cliqContext.messageId || null
-      }
+      updatedAt: null,
+      // Store Cliq context in metadata subcollection or separate mapping collection
+      // Don't pollute main document with Cliq-specific fields
     };
 
     await taskRef.set(taskData);
 
     logger.info(`Task created via Cliq: ${taskId} by ${cliqContext.userName} (Firebase ID: ${actualUserId})`);
 
+    // Store Cliq mapping separately if needed
+    // await getDb().collection('cliq_mappings').doc(taskId).set({
+    //   taskId,
+    //   cliqUserId: cliqContext.userId,
+    //   cliqUserName: cliqContext.userName,
+    //   cliqUserEmail: cliqContext.userEmail,
+    //   channelId: cliqContext.channelId || null,
+    //   messageId: cliqContext.messageId || null,
+    //   createdAt: admin.firestore.FieldValue.serverTimestamp()
+    // });
+
     // Format response with rich card
     const card = formatTaskCard({
-      ...taskData,
-      taskId
+      id: taskId,
+      ...taskData
     }, 'created');
 
     res.status(201).json({
       success: true,
       message: `✅ Task created successfully! 🎉`,
       data: {
-        taskId,
+        id: taskId,
         title,
         status: 'pending',
-        priority,
         createdAt: new Date().toISOString()
       },
       card,
@@ -135,19 +143,14 @@ exports.listTasks = async (req, res) => {
     if (status) {
       query = query.where('status', '==', status);
     }
-    if (priority) {
-      query = query.where('priority', '==', priority);
-    }
+    // Note: priority field doesn't exist in schema, removed
     if (projectId) {
       query = query.where('projectId', '==', projectId);
     }
     if (assignedTo) {
-      query = query.where('assignedTo', '==', assignedTo);
+      query = query.where('assignees', 'array-contains', assignedTo);
     }
-    if (userId && !assignedTo) {
-      // If userId provided but not assignedTo, show user's tasks
-      query = query.where('createdBy', '==', userId);
-    }
+    // Note: no createdBy field in schema, tasks are linked via assignees
 
     // Order by creation date
     query = query.orderBy('createdAt', 'desc').limit(parseInt(limit));
@@ -157,7 +160,7 @@ exports.listTasks = async (req, res) => {
     const tasks = [];
     snapshot.forEach(doc => {
       tasks.push({
-        taskId: doc.id,
+        id: doc.id,
         ...doc.data()
       });
     });
@@ -214,10 +217,8 @@ exports.assignTask = async (req, res) => {
     }
 
     await taskRef.update({
-      assignedTo,
-      assignedToName: assignedToName || assignedTo,
+      assignees: admin.firestore.FieldValue.arrayUnion(assignedTo),
       assignedBy: assignedBy || 'system',
-      assignedByName: assignedByName || 'System',
       assignedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -297,8 +298,8 @@ exports.completeTask = async (req, res) => {
     logger.info(`Task ${taskId} completed via Cliq by ${completedByName}`);
 
     const card = formatTaskCard({
+      id: taskId,
       ...taskData,
-      taskId,
       status: 'completed'
     }, 'completed');
 
@@ -306,7 +307,7 @@ exports.completeTask = async (req, res) => {
       success: true,
       message: `✅ Task completed! 🎉`,
       data: {
-        taskId,
+        id: taskId,
         status: 'completed',
         completedAt: new Date().toISOString()
       },
@@ -345,8 +346,10 @@ exports.searchTasks = async (req, res) => {
     const tasksRef = getDb().collection('tasks');
     let queryRef = tasksRef;
 
+    // Note: No createdBy field in schema
+    // If userId provided, filter by assignees instead
     if (userId) {
-      queryRef = queryRef.where('createdBy', '==', userId);
+      queryRef = queryRef.where('assignees', 'array-contains', userId);
     }
 
     const snapshot = await queryRef.get();
@@ -358,11 +361,11 @@ exports.searchTasks = async (req, res) => {
       const data = doc.data();
       const titleMatch = data.title?.toLowerCase().includes(searchLower);
       const descMatch = data.description?.toLowerCase().includes(searchLower);
-      const tagsMatch = data.tags?.some(tag => tag.toLowerCase().includes(searchLower));
+      // Note: tags field doesn't exist in schema, removed
 
-      if (titleMatch || descMatch || tagsMatch) {
+      if (titleMatch || descMatch) {
         tasks.push({
-          taskId: doc.id,
+          id: doc.id,
           ...data
         });
       }
@@ -431,35 +434,42 @@ exports.createProject = async (req, res) => {
     const projectId = projectRef.id;
 
     const projectData = {
-      projectId,
       name,
-      description: description || '',
-      color: color || 'blue',
-      icon: icon || '📁',
-      ownerId: actualUserId,
-      ownerName: createdByName || 'User',
+      description: description || null,
       members: [actualUserId],
+      ownerId: actualUserId,
       memberRoles: {
         [actualUserId]: 'owner'
       },
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: null
     };
 
     await projectRef.set(projectData);
 
     logger.info(`Project created via Cliq: ${projectId} by ${createdByName} (Firebase ID: ${actualUserId})`);
 
+    // Create owner as first member in subcollection
+    await getDb().collection('projects').doc(projectId).collection('members').doc(actualUserId).set({
+      userId: actualUserId,
+      email: email || cliqContext.userEmail || 'unknown@example.com',
+      displayName: createdByName || 'User',
+      photoUrl: null,
+      role: 'owner',
+      addedAt: admin.firestore.FieldValue.serverTimestamp(),
+      addedBy: actualUserId
+    });
+
     const card = formatProjectCard({
-      ...projectData,
-      projectId
+      id: projectId,
+      ...projectData
     }, 'created');
 
     res.status(201).json({
       success: true,
       message: `✅ Project "${name}" created successfully! 🎉`,
       data: {
-        projectId,
+        id: projectId,
         name,
         createdAt: new Date().toISOString()
       },
@@ -528,7 +538,7 @@ exports.listProjects = async (req, res) => {
       snapshot.forEach(doc => {
         if (!allProjects.has(doc.id)) {
           allProjects.set(doc.id, {
-            projectId: doc.id,
+            id: doc.id,
             ...doc.data()
           });
         }
@@ -589,21 +599,46 @@ exports.inviteMember = async (req, res) => {
 
     const projectData = projectDoc.data();
 
+    // Check if invited user exists
+    const userSnapshot = await getDb().collection('users')
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
+    
+    const invitedUserId = !userSnapshot.empty ? userSnapshot.docs[0].id : null;
+
     // Create invitation
     const invitationRef = getDb().collection('invitations').doc();
     const invitationData = {
-      invitationId: invitationRef.id,
       projectId,
       projectName: projectData.name,
-      invitedEmail: email,
-      invitedBy,
-      invitedByName: invitedByName || 'User',
-      role,
+      invitedByUserId: invitedBy,
+      invitedByUserName: invitedByName || 'User',
+      invitedEmail: email.toLowerCase(),
+      invitedUserId: invitedUserId,
       status: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      role,
+      message: null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      respondedAt: null
     };
 
     await invitationRef.set(invitationData);
+
+    // If user exists, add to their pendingInvitations subcollection
+    if (invitedUserId) {
+      await getDb().collection('users')
+        .doc(invitedUserId)
+        .collection('pendingInvitations')
+        .doc(invitationRef.id)
+        .set({
+          invitationId: invitationRef.id,
+          projectId,
+          projectName: projectData.name,
+          invitedBy: invitedByName || 'User',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    }
 
     logger.info(`Invitation sent to ${email} for project ${projectId}`);
 
@@ -611,7 +646,7 @@ exports.inviteMember = async (req, res) => {
       success: true,
       message: `✅ Invitation sent to ${email}`,
       data: {
-        invitationId: invitationRef.id,
+        id: invitationRef.id,
         email,
         projectName: projectData.name,
         role

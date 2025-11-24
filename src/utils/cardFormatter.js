@@ -188,13 +188,10 @@ exports.formatListCard = (items, type = 'tasks', filters = {}) => {
   if (filters.priority) card.data['Filter: Priority'] = filters.priority;
   if (filters.query) card.data['Search Query'] = filters.query;
 
-  // Show first 5 items
-  const displayItems = items.slice(0, 5);
+  // Show first 10 items
+  const displayItems = items.slice(0, 10);
   
   displayItems.forEach((item, index) => {
-    const key = `${index + 1}. ${item.title || item.name}`;
-    let value = '';
-
     if (type === 'tasks') {
       const priorityEmoji = {
         low: '🟢',
@@ -202,19 +199,26 @@ exports.formatListCard = (items, type = 'tasks', filters = {}) => {
         high: '🟠',
         urgent: '🔴'
       };
-      value = `${priorityEmoji[item.priority]} ${item.status}`;
+      const key = `${index + 1}. ${item.title}`;
+      let value = `${priorityEmoji[item.priority || 'medium']} ${item.status}`;
       if (item.assignedToName) {
         value += ` → ${item.assignedToName}`;
       }
+      card.data[key] = value;
     } else if (type === 'projects') {
-      value = `${item.icon || '📁'} ${item.members?.length || 0} members`;
+      const key = `${index + 1}. ${item.name}`;
+      const memberCount = item.members?.length || 0;
+      const ownerRole = item.memberRoles?.[item.ownerId] === 'owner' ? '(Owner)' : '';
+      card.data[key] = `${memberCount} member${memberCount !== 1 ? 's' : ''} ${ownerRole}`;
+    } else {
+      // Search or other types
+      const key = `${index + 1}. ${item.title || item.name}`;
+      card.data[key] = item.status || item.description || '';
     }
-
-    card.data[key] = value;
   });
 
-  if (count > 5) {
-    card.data[''] = `... and ${count - 5} more`;
+  if (count > 10) {
+    card.data[''] = `... and ${count - 10} more`;
   }
 
   // Add view all button
