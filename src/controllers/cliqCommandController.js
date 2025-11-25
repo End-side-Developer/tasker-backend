@@ -167,15 +167,35 @@ exports.listTasks = async (req, res) => {
 
     logger.info(`Listed ${tasks.length} tasks via Cliq`);
 
-    // Format response
-    const card = formatListCard(tasks, 'tasks', { status, priority, projectId });
+    // Build text response
+    let textResponse = `📋 **Your Tasks (${tasks.length})**\n\n`;
+    
+    if (tasks.length === 0) {
+      textResponse = status === 'pending' 
+        ? '✅ Great! You have no pending tasks.' 
+        : '📋 No tasks found matching your criteria.';
+    } else {
+      const displayTasks = tasks.slice(0, 10);
+      displayTasks.forEach((task, index) => {
+        const statusEmoji = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '📌';
+        textResponse += `${index + 1}. ${statusEmoji} ${task.title}\n`;
+        if (task.dueDate) {
+          const dueDate = task.dueDate.toDate();
+          textResponse += `   Due: ${dueDate.toLocaleDateString()}\n`;
+        }
+        textResponse += `\n`;
+      });
+      
+      if (tasks.length > 10) {
+        textResponse += `\n... and ${tasks.length - 10} more tasks`;
+      }
+    }
 
     res.json({
       success: true,
       message: `Found ${tasks.length} task(s)`,
       data: tasks,
-      card,
-      text: `📋 Found ${tasks.length} task(s)`
+      text: textResponse
     });
 
   } catch (error) {
