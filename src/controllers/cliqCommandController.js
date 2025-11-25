@@ -853,4 +853,107 @@ exports.checkUser = async (req, res) => {
     });
   }
 };
+/**
+ * Get Project Members Command
+ * GET /api/cliq/commands/project-members?projectId=xyz&userId=user123&email=user@example.com
+ */
+exports.getProjectMembers = async (req, res) => {
+  try {
+    const { projectId, userId, email } = req.query;
 
+    if (!projectId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing required fields',
+        text: '❌ Project ID and user ID required'
+      });
+    }
+
+    // Map Cliq user ID to Firebase user ID (with email fallback)
+    const cliqService = require('../services/cliqService');
+    const firebaseUserId = await cliqService.mapCliqUserToTasker(userId, email);
+    
+    if (!firebaseUserId) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ User not found',
+        text: '❌ Could not find your user account'
+      });
+    }
+
+    // Get project document
+    const projectDoc = await getDb().collection('projects').doc(projectId).get();
+    
+    if (!projectDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: '❌ Project not found',
+        text: `❌ Project not found`
+      });
+    }
+
+    const projectData = projectDoc.data();
+
+    // Check if user has access to this project (using Firebase ID)
+    const hasAccess = projectData.members?.includes(firebaseUserId);
+    
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ Access denied',
+        text: '❌ You do not have access to this project'
+      });
+    }
+
+    // Fetch member details
+    const memberIds = projectData.members || [];
+    const memberDetails = [];
+
+    for (const memberId of memberIds) {
+      const userDoc = await getDb().collection('users').doc(memberId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        memberDetails.push({
+          id: memberId,
+          name: userData.name || 'Unknown',
+          email: userData.email || '',
+          role: projectData.memberRoles?.[memberId] || 'member'
+        });
+      }
+    }
+
+    logger.info(`Listed ${memberDetails.length} members for project ${projectId}`);
+
+    // Format response text
+    let textResponse = `👥 **${projectData.name}**\n\n`;
+    textResponse += `**Members (${memberDetails.length}):**\n\n`;
+    
+    memberDetails.forEach((member, index) => {
+      const roleEmoji = member.role === 'owner' ? '👑' : member.role === 'editor' ? '✏️' : '👁️';
+      textResponse += `${index + 1}. ${roleEmoji} **${member.name}**\n`;
+      textResponse += `   Email: ${member.email}\n`;
+      textResponse += `   Role: ${member.role}\n\n`;
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Members retrieved successfully',
+      text: textResponse,
+      data: {
+        projectId,
+        projectName: projectData.name,
+        members: memberDetails,
+        totalMembers: memberDetails.length
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error getting project members:', error);
+    res.status(500).json({
+      success: false,
+      message: '❌ Failed to get project members',
+      error: error.message,
+      text: '❌ Failed to retrieve project members. Please try again.'
+    });
+  }
+};
