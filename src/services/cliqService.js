@@ -18,12 +18,27 @@ class CliqService {
   /**
    * Map Cliq user to Tasker user
    */
-  async mapCliqUserToTasker(cliqUserId) {
+  async mapCliqUserToTasker(cliqUserId, email = null) {
     try {
       const doc = await this.db.collection('cliq_user_mappings').doc(cliqUserId).get();
 
       if (!doc.exists) {
         logger.warn('Cliq user mapping not found', { cliqUserId });
+        
+        // Fallback to email lookup if provided
+        if (email) {
+          const userSnapshot = await this.db.collection('users')
+            .where('email', '==', email.toLowerCase())
+            .limit(1)
+            .get();
+          
+          if (!userSnapshot.empty) {
+            const firebaseUserId = userSnapshot.docs[0].id;
+            logger.info(`Found Firebase user by email fallback: ${email} -> ${firebaseUserId}`);
+            return firebaseUserId;
+          }
+        }
+        
         return null;
       }
 

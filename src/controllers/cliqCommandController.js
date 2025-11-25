@@ -680,11 +680,11 @@ exports.inviteMember = async (req, res) => {
 
 /**
  * Get Project Details Command
- * GET /api/cliq/commands/project-details?projectId=xyz&userId=user123
+ * GET /api/cliq/commands/project-details?projectId=xyz&userId=user123&email=user@example.com
  */
 exports.getProjectDetails = async (req, res) => {
   try {
-    const { projectId, userId } = req.query;
+    const { projectId, userId, email } = req.query;
 
     if (!projectId || !userId) {
       return res.status(400).json({
@@ -694,9 +694,9 @@ exports.getProjectDetails = async (req, res) => {
       });
     }
 
-    // Map Cliq user ID to Firebase user ID
+    // Map Cliq user ID to Firebase user ID (with email fallback)
     const cliqService = require('../services/cliqService');
-    const firebaseUserId = await cliqService.mapCliqUserToTasker(userId);
+    const firebaseUserId = await cliqService.mapCliqUserToTasker(userId, email);
     
     if (!firebaseUserId) {
       return res.status(403).json({
