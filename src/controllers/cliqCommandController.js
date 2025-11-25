@@ -694,6 +694,18 @@ exports.getProjectDetails = async (req, res) => {
       });
     }
 
+    // Map Cliq user ID to Firebase user ID
+    const cliqService = require('../services/cliqService');
+    const firebaseUserId = await cliqService.mapCliqUserToTasker(userId);
+    
+    if (!firebaseUserId) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ User not found',
+        text: '❌ Could not find your user account'
+      });
+    }
+
     // Get project document
     const projectDoc = await getDb().collection('projects').doc(projectId).get();
     
@@ -707,21 +719,15 @@ exports.getProjectDetails = async (req, res) => {
 
     const projectData = projectDoc.data();
 
-    // Check if user has access to this project
-    const hasAccess = projectData.members?.includes(userId);
+    // Check if user has access to this project (using Firebase ID)
+    const hasAccess = projectData.members?.includes(firebaseUserId);
     
     if (!hasAccess) {
-      // Try with Firebase user ID
-      const cliqService = require('../services/cliqService');
-      const firebaseUserId = await cliqService.mapCliqUserToTasker(userId);
-      
-      if (!firebaseUserId || !projectData.members?.includes(firebaseUserId)) {
-        return res.status(403).json({
-          success: false,
-          message: '❌ Access denied',
-          text: '❌ You do not have access to this project'
-        });
-      }
+      return res.status(403).json({
+        success: false,
+        message: '❌ Access denied',
+        text: '❌ You do not have access to this project'
+      });
     }
 
     // Get members from subcollection
