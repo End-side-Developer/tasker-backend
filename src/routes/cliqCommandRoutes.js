@@ -10,6 +10,7 @@ const {
   createProject,
   listProjects,
   inviteMember,
+  getProjectDetails,
   checkUser
 } = require('../controllers/cliqCommandController');
 
@@ -29,6 +30,7 @@ router.get('/search', verifyAuth, searchTasks);
 router.post('/create-project', verifyAuth, createProject);
 router.get('/list-projects', verifyAuth, listProjects);
 router.post('/invite-member', verifyAuth, inviteMember);
+router.get('/project-details', verifyAuth, getProjectDetails);
 router.get('/check-user', verifyAuth, checkUser);
 
 module.exports = router;

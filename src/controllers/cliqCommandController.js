@@ -679,6 +679,127 @@ exports.inviteMember = async (req, res) => {
 };
 
 /**
+ * Get Project Details Command
+ * GET /api/cliq/commands/project-details?projectId=xyz&userId=user123
+ */
+exports.getProjectDetails = async (req, res) => {
+  try {
+    const { projectId, userId } = req.query;
+
+    if (!projectId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing required fields',
+        text: '❌ Project ID and user ID required'
+      });
+    }
+
+    // Get project document
+    const projectDoc = await getDb().collection('projects').doc(projectId).get();
+    
+    if (!projectDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: '❌ Project not found',
+        text: `❌ Project not found`
+      });
+    }
+
+    const projectData = projectDoc.data();
+
+    // Check if user has access to this project
+    const hasAccess = projectData.members?.includes(userId);
+    
+    if (!hasAccess) {
+      // Try with Firebase user ID
+      const cliqService = require('../services/cliqService');
+      const firebaseUserId = await cliqService.mapCliqUserToTasker(userId);
+      
+      if (!firebaseUserId || !projectData.members?.includes(firebaseUserId)) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ Access denied',
+          text: '❌ You do not have access to this project'
+        });
+      }
+    }
+
+    // Get members from subcollection
+    const membersSnapshot = await getDb().collection('projects')
+      .doc(projectId)
+      .collection('members')
+      .get();
+    
+    const members = [];
+    membersSnapshot.forEach(doc => {
+      const memberData = doc.data();
+      members.push({
+        userId: doc.id,
+        name: memberData.displayName || memberData.email,
+        email: memberData.email,
+        role: memberData.role || projectData.memberRoles?.[doc.id] || 'viewer',
+        addedAt: memberData.addedAt?.toDate().toISOString()
+      });
+    });
+
+    // Get task statistics
+    const tasksSnapshot = await getDb().collection('tasks')
+      .where('projectId', '==', projectId)
+      .get();
+    
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let pendingTasks = 0;
+    
+    tasksSnapshot.forEach(doc => {
+      const taskData = doc.data();
+      totalTasks++;
+      if (taskData.status === 'completed') {
+        completedTasks++;
+      } else {
+        pendingTasks++;
+      }
+    });
+
+    // Get owner info
+    const ownerId = projectData.ownerId;
+    const ownerDoc = await getDb().collection('users').doc(ownerId).get();
+    const ownerData = ownerDoc.exists ? ownerDoc.data() : null;
+
+    const projectDetails = {
+      id: projectId,
+      name: projectData.name,
+      description: projectData.description || 'No description',
+      createdBy: ownerData?.displayName || ownerData?.email || 'Unknown',
+      createdAt: projectData.createdAt?.toDate().toISOString() || 'Unknown',
+      memberCount: members.length,
+      members: members,
+      totalTasks,
+      completedTasks,
+      pendingTasks
+    };
+
+    logger.info(`Retrieved details for project ${projectId}`);
+
+    res.json({
+      success: true,
+      message: `Project details retrieved`,
+      data: projectDetails,
+      text: `📋 Project: ${projectData.name}`
+    });
+
+  } catch (error) {
+    logger.error('Error getting project details via Cliq:', error);
+    res.status(500).json({
+      success: false,
+      message: '❌ Failed to get project details',
+      error: error.message,
+      text: '❌ Failed to retrieve project details. Please try again.'
+    });
+  }
+};
+
+/**
  * Check User Registration Status
  * GET /api/cliq/commands/check-user?email=user@example.com
  */
