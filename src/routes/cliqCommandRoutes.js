@@ -12,6 +12,7 @@ const {
   inviteMember,
   getProjectDetails,
   getProjectMembers,
+  getTaskDetails,
   checkUser
 } = require('../controllers/cliqCommandController');
 
@@ -25,6 +26,7 @@ router.post('/create-task', verifyAuth, createTask);
 router.get('/list-tasks', verifyAuth, listTasks);
 router.post('/assign-task', verifyAuth, assignTask);
 router.post('/complete-task', verifyAuth, completeTask);
+router.get('/task-details', verifyAuth, getTaskDetails);
 router.get('/search', verifyAuth, searchTasks);
 
 // Project Management Commands

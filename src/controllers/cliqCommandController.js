@@ -957,3 +957,117 @@ exports.getProjectMembers = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get Task Details Command
+ * GET /api/cliq/commands/task-details?taskId=xyz&userId=user123&email=user@example.com
+ */
+exports.getTaskDetails = async (req, res) => {
+  try {
+    const { taskId, userId, email } = req.query;
+
+    if (!taskId || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing required fields',
+        text: '❌ Task ID and user ID required'
+      });
+    }
+
+    // Map Cliq user ID to Firebase user ID (with email fallback)
+    const cliqService = require('../services/cliqService');
+    const firebaseUserId = await cliqService.mapCliqUserToTasker(userId, email);
+    
+    if (!firebaseUserId) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ User not found',
+        text: '❌ Could not find your user account'
+      });
+    }
+
+    // Get task document
+    const taskDoc = await getDb().collection('tasks').doc(taskId).get();
+    
+    if (!taskDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: '❌ Task not found',
+        text: `❌ Task not found`
+      });
+    }
+
+    const taskData = taskDoc.data();
+
+    // Format response text
+    let textResponse = `📋 **Task Details**\n\n`;
+    textResponse += `**Title:** ${taskData.title}\n\n`;
+    
+    if (taskData.description) {
+      textResponse += `**Description:** ${taskData.description}\n\n`;
+    }
+    
+    const statusEmoji = taskData.status === 'completed' ? '✅' : taskData.status === 'in_progress' ? '🔄' : '📌';
+    textResponse += `**Status:** ${statusEmoji} ${taskData.status}\n\n`;
+    
+    if (taskData.projectId) {
+      const projectDoc = await getDb().collection('projects').doc(taskData.projectId).get();
+      if (projectDoc.exists) {
+        textResponse += `**Project:** ${projectDoc.data().name}\n\n`;
+      }
+    }
+    
+    if (taskData.dueDate) {
+      const dueDate = taskData.dueDate.toDate();
+      textResponse += `**Due Date:** ${dueDate.toLocaleDateString()}\n\n`;
+    }
+    
+    if (taskData.assignees && taskData.assignees.length > 0) {
+      textResponse += `**Assignees:** `;
+      for (let i = 0; i < taskData.assignees.length; i++) {
+        const assigneeDoc = await getDb().collection('users').doc(taskData.assignees[i]).get();
+        if (assigneeDoc.exists) {
+          const assigneeData = assigneeDoc.data();
+          textResponse += assigneeData.displayName || assigneeData.email;
+          if (i < taskData.assignees.length - 1) textResponse += ', ';
+        }
+      }
+      textResponse += `\n\n`;
+    }
+    
+    if (taskData.createdAt) {
+      const createdDate = taskData.createdAt.toDate();
+      textResponse += `**Created:** ${createdDate.toLocaleDateString()} at ${createdDate.toLocaleTimeString()}\n\n`;
+    }
+    
+    if (taskData.completedAt) {
+      const completedDate = taskData.completedAt.toDate();
+      textResponse += `**Completed:** ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}\n\n`;
+    }
+    
+    if (taskData.completionNotes) {
+      textResponse += `**Completion Notes:** ${taskData.completionNotes}\n\n`;
+    }
+
+    logger.info(`Retrieved task details for ${taskId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Task details retrieved successfully',
+      text: textResponse,
+      data: {
+        id: taskId,
+        ...taskData
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error getting task details:', error);
+    res.status(500).json({
+      success: false,
+      message: '❌ Failed to get task details',
+      error: error.message,
+      text: '❌ Failed to retrieve task details. Please try again.'
+    });
+  }
+};
