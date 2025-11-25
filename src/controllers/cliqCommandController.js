@@ -589,7 +589,7 @@ exports.listProjects = async (req, res) => {
  */
 exports.inviteMember = async (req, res) => {
   try {
-    const { projectId, email, role = 'editor', invitedBy, invitedByName } = req.body;
+    const { projectId, email, role = 'editor', invitedBy, invitedByName, message } = req.body;
 
     if (!projectId || !email || !invitedBy) {
       return res.status(400).json({
@@ -631,7 +631,7 @@ exports.inviteMember = async (req, res) => {
       invitedUserId: invitedUserId,
       status: 'pending',
       role,
-      message: null,
+      message: message || null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       respondedAt: null
     };
@@ -677,3 +677,53 @@ exports.inviteMember = async (req, res) => {
     });
   }
 };
+
+/**
+ * Check User Registration Status
+ * GET /api/cliq/commands/check-user?email=user@example.com
+ */
+exports.checkUser = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Email is required',
+        exists: false
+      });
+    }
+
+    // Check if user exists in Firestore
+    const userSnapshot = await getDb().collection('users')
+      .where('email', '==', email.toLowerCase())
+      .limit(1)
+      .get();
+    
+    const userExists = !userSnapshot.empty;
+
+    logger.info(`User check for ${email}: ${userExists ? 'registered' : 'not registered'}`);
+
+    res.status(200).json({
+      success: true,
+      exists: userExists,
+      message: userExists 
+        ? `✅ User is registered on Tasker` 
+        : `⚠️ User is not registered on Tasker`,
+      data: {
+        email: email.toLowerCase(),
+        registered: userExists
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error checking user registration:', error);
+    res.status(500).json({
+      success: false,
+      exists: false,
+      message: '❌ Error checking user registration',
+      error: error.message
+    });
+  }
+};
+

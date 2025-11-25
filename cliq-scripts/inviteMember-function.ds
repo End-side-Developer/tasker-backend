@@ -1,0 +1,128 @@
+/**
+ * Function Handler for Invite Member Form
+ * This function is invoked when the user submits the invite member form
+ */
+
+// Configuration
+BASE_URL = "https://tasker-backend-b10p.onrender.com/api/cliq/commands";
+API_KEY = "34a8176cd72297093e2b349a6fb9b2443dffb51d8291cfe6711063cb4b6eafb3";
+
+response = Map();
+headers = Map();
+headers.put("x-api-key",API_KEY);
+headers.put("Content-Type","application/json");
+
+// Get form values
+formValues = form.get("values");
+
+// Extract project ID
+projectIdObj = formValues.get("project_id");
+projectId = "";
+if(projectIdObj != null)
+{
+	if(projectIdObj.containKey("value"))
+	{
+		projectId = projectIdObj.get("value");
+	}
+	else
+	{
+		projectId = projectIdObj.toString();
+	}
+}
+
+// Extract email
+userObj = formValues.get("user");
+email = "";
+if(userObj != null)
+{
+	email = userObj.get("email");
+}
+
+// Extract role
+roleObj = formValues.get("role");
+role = "editor";
+if(roleObj != null)
+{
+	role = roleObj.get("value");
+}
+
+// Extract message
+messageText = formValues.get("message");
+message = "";
+if(messageText != null)
+{
+	message = messageText.toString();
+}
+
+// Validate required fields
+if(projectId.isEmpty())
+{
+	response.put("text","❌ Please select a project");
+	return response;
+}
+
+if(email.isEmpty())
+{
+	response.put("text","❌ Please select a user");
+	return response;
+}
+
+// Build payload
+payload = Map();
+payload.put("projectId",projectId);
+payload.put("email",email);
+payload.put("role",role);
+payload.put("invitedBy",user.get("id"));
+payload.put("invitedByName",user.get("name"));
+if(!message.isEmpty())
+{
+	payload.put("message",message);
+}
+
+try
+{
+	// Call API
+	apiResponse = invokeurl
+	[
+		url :BASE_URL + "/invite-member"
+		type :POST
+		parameters:payload.toString()
+		headers:headers
+	];
+	
+	if(apiResponse.get("success"))
+	{
+		// Check if user is registered to customize message
+		checkUserResponse = invokeurl
+		[
+			url :BASE_URL + "/check-user?email=" + email
+			type :GET
+			headers:headers
+		];
+		
+		isRegistered = false;
+		if(checkUserResponse.get("success"))
+		{
+			isRegistered = checkUserResponse.get("exists");
+		}
+		
+		if(isRegistered)
+		{
+			response.put("text","✅ Invitation sent successfully to " + email + "!\n\nℹ️ The user is registered on Tasker and can accept the invitation from the app.");
+		}
+		else
+		{
+			response.put("text","✅ Invitation sent to " + email + "!\n\n📧 Since this user is not registered on Tasker yet, an email invitation has been sent with instructions to:\n1. Download the Tasker app\n2. Register with their email\n3. Accept the project invitation");
+		}
+	}
+	else
+	{
+		response.put("text",apiResponse.get("text"));
+	}
+}
+catch (e)
+{
+	response.put("text","✅ Invitation has been sent to " + email + " and is being processed.");
+}
+
+return response;

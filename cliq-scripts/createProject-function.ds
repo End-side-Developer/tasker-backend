@@ -1,0 +1,106 @@
+/**
+ * Function Handler for Create Project Form
+ * This function is invoked when the user submits the create project form
+ */
+
+// Configuration
+BASE_URL = "https://tasker-backend-b10p.onrender.com/api/cliq/commands";
+API_KEY = "34a8176cd72297093e2b349a6fb9b2443dffb51d8291cfe6711063cb4b6eafb3";
+
+response = Map();
+headers = Map();
+headers.put("x-api-key",API_KEY);
+headers.put("Content-Type","application/json");
+
+info "=== CREATE PROJECT FUNCTION START ===";
+
+try 
+{
+	// Get form values
+	info "Getting form values...";
+	formValues = form.get("values");
+	info "Form values: " + formValues;
+	
+	// Extract project name and description
+	projectName = formValues.get("pname");
+	projectDescription = formValues.get("description");
+	
+	info "Project Name: " + projectName;
+	info "Project Description: " + projectDescription;
+	
+	if(projectName == null || projectName.isEmpty())
+	{
+		response.put("text","❌ Project name is required!");
+		return response;
+	}
+	
+	// Prepare payload
+	payload = Map();
+	payload.put("name",projectName);
+	payload.put("description",projectDescription);
+	payload.put("createdBy",user.get("id"));
+	payload.put("createdByName",user.get("name"));
+	payload.put("email",user.get("email"));
+	
+	info "Payload: " + payload;
+	
+	// Call backend API
+	info "Calling API...";
+	apiResponse = invokeurl
+	[
+		url :BASE_URL + "/create-project"
+		type :POST
+		parameters:payload.toString()
+		headers:headers
+	];
+	
+	info "API Response: " + apiResponse;
+	
+	// Check success
+	if(apiResponse != null && apiResponse.get("success") == true)
+	{
+		info "Project created successfully";
+		
+		projectData = apiResponse.get("data");
+		info "Project data: " + projectData;
+		
+		if(projectData != null)
+		{
+			projectId = projectData.get("id");
+			projectNameCreated = projectData.get("name");
+			
+			info "Project ID: " + projectId;
+			info "Project Name Created: " + projectNameCreated;
+			
+			response.put("text","✅ Project \"" + projectNameCreated + "\" created successfully! 🎉");
+		}
+		else
+		{
+			info "Project data is null";
+			response.put("text","✅ Project created successfully!");
+		}
+	}
+	else
+	{
+		info "Project creation failed";
+		errorMessage = "Failed to create project. Please try again.";
+		if(apiResponse != null)
+		{
+			errorMsg = apiResponse.get("text");
+			if(errorMsg != null && errorMsg != "")
+			{
+				errorMessage = errorMsg;
+			}
+		}
+		info "Error message: " + errorMessage;
+		response.put("text","❌ " + errorMessage);
+	}
+}
+catch (e)
+{
+	info "EXCEPTION CAUGHT: " + e;
+	response.put("text","❌ Error creating project: " + e);
+}
+
+info "=== CREATE PROJECT FUNCTION END ===";
+return response;

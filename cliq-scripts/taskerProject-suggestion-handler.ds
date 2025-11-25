@@ -1,0 +1,377 @@
+/**
+ * Zoho Cliq Command Suggestion Handler: /taskerproject
+ * 
+ * Provides dynamic suggestions for the /taskerproject slash command.
+ * Based on the Zoho Cliq Suggestion Handler API
+ * Reference: https://www.zoho.com/cliq/help/platform/command-suggestion.html
+ */
+
+list = List();
+query = arguments.trim();
+
+// Icon URLs for visual consistency
+projectIcon = "https://img.icons8.com/fluency/96/folder.png";
+createIcon = "https://img.icons8.com/fluency/96/add-folder.png";
+listIcon = "https://img.icons8.com/fluency/96/list.png";
+inviteIcon = "https://img.icons8.com/fluency/96/add-user-group-man-man.png";
+detailsIcon = "https://img.icons8.com/fluency/96/info.png";
+membersIcon = "https://img.icons8.com/fluency/96/user-group-man-man.png";
+ownerIcon = "https://img.icons8.com/fluency/96/crown.png";
+editorIcon = "https://img.icons8.com/fluency/96/edit.png";
+viewerIcon = "https://img.icons8.com/fluency/96/visible.png";
+
+// ========================================
+// SECTION 1: Empty or Top-Level Suggestions
+// ========================================
+if(query == "")
+{
+	// Show all main commands
+	entry1 = Map();
+	entry1.put("title","create");
+	entry1.put("description","Create a new project with name and description");
+	entry1.put("imageurl",createIcon);
+	list.add(entry1);
+	
+	entry2 = Map();
+	entry2.put("title","list");
+	entry2.put("description","List all your projects");
+	entry2.put("imageurl",listIcon);
+	list.add(entry2);
+	
+	entry3 = Map();
+	entry3.put("title","invite");
+	entry3.put("description","Invite a member to a project");
+	entry3.put("imageurl",inviteIcon);
+	list.add(entry3);
+	
+	entry4 = Map();
+	entry4.put("title","details");
+	entry4.put("description","View project details and information");
+	entry4.put("imageurl",detailsIcon);
+	list.add(entry4);
+	
+	entry5 = Map();
+	entry5.put("title","members");
+	entry5.put("description","View all members of a project");
+	entry5.put("imageurl",membersIcon);
+	list.add(entry5);
+	
+	return list;
+}
+
+// ========================================
+// SECTION 2: Command-Specific Suggestions
+// ========================================
+// Extract the first word (command)
+spaceIndex = query.indexOf(" ");
+if(spaceIndex > 0)
+{
+	command = query.subString(0,spaceIndex).toLowerCase();
+	remainder = query.subString(spaceIndex + 1,query.length()).trim();
+}
+else
+{
+	command = query.toLowerCase();
+	remainder = "";
+}
+
+// ========================================
+// 2.1: "create" command suggestions
+// ========================================
+if(command == "create" || command.startsWith("cr"))
+{
+	if(remainder == "")
+	{
+		// Show examples for create command
+		entry1 = Map();
+		entry1.put("title","create \"Project Name\"");
+		entry1.put("description","Start by typing your project name in quotes");
+		entry1.put("imageurl",createIcon);
+		list.add(entry1);
+		
+		entry2 = Map();
+		entry2.put("title","create \"Marketing Campaign\"");
+		entry2.put("description","Example: Create a marketing project");
+		entry2.put("imageurl",createIcon);
+		list.add(entry2);
+		
+		entry3 = Map();
+		entry3.put("title","create \"Website Redesign\"");
+		entry3.put("description","Example: Create a website project");
+		entry3.put("imageurl",createIcon);
+		list.add(entry3);
+		
+		entry4 = Map();
+		entry4.put("title","create \"Mobile App\"");
+		entry4.put("description","Example: Create a mobile app project");
+		entry4.put("imageurl",createIcon);
+		list.add(entry4);
+		
+		entry5 = Map();
+		entry5.put("title","create \"Q4 Goals\"");
+		entry5.put("description","Example: Create a quarterly goals project");
+		entry5.put("imageurl",createIcon);
+		list.add(entry5);
+	}
+	else
+	{
+		// Show helpful tips after user starts typing
+		entry1 = Map();
+		entry1.put("title","create "+ remainder);
+		entry1.put("description","Press Enter to create this project");
+		entry1.put("imageurl",createIcon);
+		list.add(entry1);
+		
+		entry2 = Map();
+		entry2.put("title","💡 Tip");
+		entry2.put("description","Keep project names short and descriptive");
+		entry2.put("imageurl","https://img.icons8.com/fluency/96/idea.png");
+		list.add(entry2);
+	}
+	return list;
+}
+
+// ========================================
+// 2.2: "list" command suggestions
+// ========================================
+else if(command == "list" || command.startsWith("li"))
+{
+	entry1 = Map();
+	entry1.put("title","list");
+	entry1.put("description","Show all your projects with member counts");
+	entry1.put("imageurl",listIcon);
+	list.add(entry1);
+	
+	entry2 = Map();
+	entry2.put("title","💡 Tip");
+	entry2.put("description","Lists up to 10 projects with names and member counts");
+	entry2.put("imageurl","https://img.icons8.com/fluency/96/idea.png");
+	list.add(entry2);
+	
+	return list;
+}
+
+// ========================================
+// 2.3: "invite" command suggestions
+// ========================================
+else if(command == "invite" || command.startsWith("in"))
+{
+	if(remainder == "")
+	{
+		// Show format for invite command
+		entry1 = Map();
+		entry1.put("title","invite <project_id> user@example.com");
+		entry1.put("description","Invite as editor (default role)");
+		entry1.put("imageurl",inviteIcon);
+		list.add(entry1);
+		
+		entry2 = Map();
+		entry2.put("title","invite <project_id> user@example.com owner");
+		entry2.put("description","Invite as owner (full access)");
+		entry2.put("imageurl",ownerIcon);
+		list.add(entry2);
+		
+		entry3 = Map();
+		entry3.put("title","invite <project_id> user@example.com editor");
+		entry3.put("description","Invite as editor (can create/edit tasks)");
+		entry3.put("imageurl",editorIcon);
+		list.add(entry3);
+		
+		entry4 = Map();
+		entry4.put("title","invite <project_id> user@example.com viewer");
+		entry4.put("description","Invite as viewer (read-only access)");
+		entry4.put("imageurl",viewerIcon);
+		list.add(entry4);
+		
+		entry5 = Map();
+		entry5.put("title","💡 Tip");
+		entry5.put("description","Get project_id from /taskerproject list command");
+		entry5.put("imageurl","https://img.icons8.com/fluency/96/idea.png");
+		list.add(entry5);
+	}
+	else
+	{
+		// Check what part of invite command user is typing
+		// Count spaces to determine how many parts we have
+		spaceCount = 0;
+		tempStr = remainder;
+		spacePos = tempStr.indexOf(" ");
+		if(spacePos >= 0)
+		{
+			spaceCount = spaceCount + 1;
+			tempStr = tempStr.subString(spacePos + 1, tempStr.length());
+			spacePos = tempStr.indexOf(" ");
+			if(spacePos >= 0)
+			{
+				spaceCount = spaceCount + 1;
+				tempStr = tempStr.subString(spacePos + 1, tempStr.length());
+				spacePos = tempStr.indexOf(" ");
+				if(spacePos >= 0)
+				{
+					spaceCount = spaceCount + 1;
+				}
+			}
+		}
+		partCount = spaceCount + 1;
+		
+		if(partCount == 1)
+		{
+			// User typed project ID, suggest email format
+			entry1 = Map();
+			entry1.put("title",remainder + " user@example.com");
+			entry1.put("description","Add email address");
+			entry1.put("imageurl",inviteIcon);
+			list.add(entry1);
+			
+			entry2 = Map();
+			entry2.put("title","💡 Next");
+			entry2.put("description","Type the email address of the person to invite");
+			entry2.put("imageurl","https://img.icons8.com/fluency/96/email.png");
+			list.add(entry2);
+		}
+		else if(partCount == 2)
+		{
+			// User typed project ID and email, suggest roles
+			entry1 = Map();
+			entry1.put("title",remainder + " owner");
+			entry1.put("description","Invite as owner (full project control)");
+			entry1.put("imageurl",ownerIcon);
+			list.add(entry1);
+			
+			entry2 = Map();
+			entry2.put("title",remainder + " editor");
+			entry2.put("description","Invite as editor (can create/edit tasks)");
+			entry2.put("imageurl",editorIcon);
+			list.add(entry2);
+			
+			entry3 = Map();
+			entry3.put("title",remainder + " viewer");
+			entry3.put("description","Invite as viewer (read-only access)");
+			entry3.put("imageurl",viewerIcon);
+			list.add(entry3);
+			
+			entry4 = Map();
+			entry4.put("title",remainder);
+			entry4.put("description","Send invite with default 'editor' role");
+			entry4.put("imageurl",inviteIcon);
+			list.add(entry4);
+		}
+		else
+		{
+			// Command complete
+			entry1 = Map();
+			entry1.put("title",remainder);
+			entry1.put("description","Press Enter to send invitation");
+			entry1.put("imageurl",inviteIcon);
+			list.add(entry1);
+		}
+	}
+	return list;
+}
+
+// ========================================
+// 2.4: "details" or "info" command suggestions
+// ========================================
+else if(command == "details" || command == "info" || command.startsWith("de") || command.startsWith("inf"))
+{
+	if(remainder == "")
+	{
+		entry1 = Map();
+		entry1.put("title","details <project_id>");
+		entry1.put("description","View detailed information about a project");
+		entry1.put("imageurl",detailsIcon);
+		list.add(entry1);
+		
+		entry2 = Map();
+		entry2.put("title","💡 Tip");
+		entry2.put("description","Get project_id from /taskerproject list command");
+		entry2.put("imageurl","https://img.icons8.com/fluency/96/idea.png");
+		list.add(entry2);
+		
+		entry3 = Map();
+		entry3.put("title","ℹ️ Coming Soon");
+		entry3.put("description","Project details feature is under development");
+		entry3.put("imageurl","https://img.icons8.com/fluency/96/under-construction.png");
+		list.add(entry3);
+	}
+	else
+	{
+		entry1 = Map();
+		entry1.put("title",remainder);
+		entry1.put("description","Press Enter to view project details");
+		entry1.put("imageurl",detailsIcon);
+		list.add(entry1);
+	}
+	return list;
+}
+
+// ========================================
+// 2.5: "members" command suggestions
+// ========================================
+else if(command == "members" || command.startsWith("me") || command.startsWith("mem"))
+{
+	if(remainder == "")
+	{
+		entry1 = Map();
+		entry1.put("title","members <project_id>");
+		entry1.put("description","View all members of a project");
+		entry1.put("imageurl",membersIcon);
+		list.add(entry1);
+		
+		entry2 = Map();
+		entry2.put("title","💡 Tip");
+		entry2.put("description","Get project_id from /taskerproject list command");
+		entry2.put("imageurl","https://img.icons8.com/fluency/96/idea.png");
+		list.add(entry2);
+		
+		entry3 = Map();
+		entry3.put("title","ℹ️ Coming Soon");
+		entry3.put("description","Project members feature is under development");
+		entry3.put("imageurl","https://img.icons8.com/fluency/96/under-construction.png");
+		list.add(entry3);
+	}
+	else
+	{
+		entry1 = Map();
+		entry1.put("title",remainder);
+		entry1.put("description","Press Enter to view project members");
+		entry1.put("imageurl",membersIcon);
+		list.add(entry1);
+	}
+	return list;
+}
+
+// ========================================
+// Default: Show all commands (fallback)
+// ========================================
+entry1 = Map();
+entry1.put("title","create");
+entry1.put("description","Create a new project");
+entry1.put("imageurl",createIcon);
+list.add(entry1);
+
+entry2 = Map();
+entry2.put("title","list");
+entry2.put("description","List all projects");
+entry2.put("imageurl",listIcon);
+list.add(entry2);
+
+entry3 = Map();
+entry3.put("title","invite");
+entry3.put("description","Invite member to project");
+entry3.put("imageurl",inviteIcon);
+list.add(entry3);
+
+entry4 = Map();
+entry4.put("title","details");
+entry4.put("description","View project details");
+entry4.put("imageurl",detailsIcon);
+list.add(entry4);
+
+entry5 = Map();
+entry5.put("title","members");
+entry5.put("description","View project members");
+entry5.put("imageurl",membersIcon);
+list.add(entry5);
+
+return list;
