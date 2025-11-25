@@ -915,7 +915,7 @@ exports.getProjectMembers = async (req, res) => {
         const userData = userDoc.data();
         memberDetails.push({
           id: memberId,
-          name: userData.name || 'Unknown',
+          name: userData.displayName || userData.name || userData.email || 'Unknown',
           email: userData.email || '',
           role: projectData.memberRoles?.[memberId] || 'member'
         });
