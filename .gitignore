@@ -4,3 +4,11 @@ logs/
 .env
 serviceKeyTasker.json
 .DS_Store
+
+# Zoho Cliq Scripts (contains sensitive API keys)
+cliq-scripts/**
+!cliq-scripts/README.md
+!cliq-scripts/commands/
+!cliq-scripts/handlers/
+!cliq-scripts/functions/
+

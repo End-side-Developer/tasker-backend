@@ -1,168 +1,114 @@
-# Tasker Zoho Cliq Scripts
+# Zoho Cliq Scripts - Folder Structure
 
-This folder contains all Deluge scripts for Tasker's Zoho Cliq integration.
+This directory contains all Zoho Cliq bot scripts for the Tasker project.
 
-## 📁 Files
+## ⚠️ IMPORTANT: Security Notice
 
-### 1. `tasker-slash-command.ds`
-**Purpose:** Main slash command handler for `/tasker`
+**This folder is git-ignored because it contains sensitive API keys and credentials.**
 
-**Setup in Zoho Cliq:**
-1. Go to https://cliq.zoho.com/company/devapp
-2. Click "Create Command" or edit existing `/tasker` command
-3. Set command name: `tasker`
-4. Copy entire content from `tasker-slash-command.ds`
-5. Paste into the "Handler" section
-6. Click "Save"
+- Never commit these files to version control
+- API keys are embedded in the scripts for Zoho Cliq bot functionality
+- Keep this folder secure and private
 
-**Commands Supported:**
-- `/tasker create "title" priority:high due:2025-12-31` - Create task
-- `/tasker list status:pending` - List tasks with filters
-- `/tasker my tasks` - Show assigned tasks
-- `/tasker complete <task_id>` - Mark complete
-- `/tasker assign <task_id> @user` - Assign task
-- `/tasker search "keyword"` - Search tasks
-- `/tasker projects` - List projects
-- `/tasker project create "name"` - Create project
-- `/tasker overdue` - Show overdue tasks
+## 📁 Folder Structure
 
-### 2. `tasker-suggestion-handler.ds`
-**Purpose:** Smart suggestions that appear when typing `/tasker`
-
-**Setup in Zoho Cliq:**
-1. Go to https://cliq.zoho.com/company/devapp
-2. Edit your `/tasker` command
-3. Click "Add Suggestion Handler"
-4. Copy entire content from `tasker-suggestion-handler.ds`
-5. Paste into the "Suggestion Handler" section
-6. Click "Save"
-
-**Features:**
-- Shows 10 helpful command suggestions with images
-- Displays as users type `/tasker`
-- Includes example syntax for each command
-- Visual GIF icons for better UX
-
-## 🚀 Quick Setup Guide
-
-### Step 1: Create Slash Command
-```bash
-1. Open Zoho Cliq Developer Console
-2. Navigate to "Commands" section
-3. Click "Create Command"
-4. Name: tasker
-5. Description: Task management for your team
-6. Usage Hint: create, list, my tasks, complete, assign, search, projects
+```
+cliq-scripts/
+├── commands/           # Slash command handlers (.dg)
+│   ├── taskerProject-slash-command.dg
+│   ├── tasker-slash-command.dg
+│   └── cliq-slash-command.dg
+│
+├── handlers/           # Suggestion and event handlers (.dg)
+│   ├── taskerProject-suggestion-handler.dg
+│   ├── tasker-suggestion-handler.dg
+│   └── slash-tasker-suggestion-script.dg
+│
+├── functions/          # Form handlers and functions (.dg)
+│   ├── createProject-function.dg
+│   ├── inviteMember-function.dg
+│   └── inviteMemberChangeHandler.dg
+│
+└── README.md          # This file
 ```
 
-### Step 2: Add Command Handler
-```bash
-1. In the command editor, find "Handler" section
-2. Copy all code from tasker-slash-command.ds
-3. Paste into Handler textarea
-4. Verify BASE_URL and API_KEY are correct
-5. Click "Save"
-```
+## 📝 File Types
 
-### Step 3: Add Suggestion Handler
-```bash
-1. In the same command editor, find "Suggestion Handler" section
-2. Click "Add Suggestion Handler"
-3. Copy all code from tasker-suggestion-handler.ds
-4. Paste into Suggestion Handler textarea
-5. Click "Save"
-```
+### Commands (`.dg` in `commands/`)
+- **Purpose**: Handle slash commands like `/taskerproject`, `/tasker`
+- **Examples**: `/taskerproject create`, `/taskerproject list`, `/taskerproject invite`
+- **Upload to**: Zoho Cliq Bot → Message Actions → Slash Commands
 
-### Step 4: Test the Command
-```bash
-1. Open any Cliq channel or chat
-2. Type /tasker and press space
-3. You should see 10 suggestion cards appear
-4. Try: /tasker create "Test task" priority:high
-5. Verify task creation response
-```
+### Handlers (`.dg` in `handlers/`)
+- **Purpose**: Provide autocomplete suggestions and handle user interactions
+- **Examples**: Show suggestions when user types `/taskerproject cr...`
+- **Upload to**: Zoho Cliq Bot → Message Actions → Slash Commands → Suggestions
+
+### Functions (`.dg` in `functions/`)
+- **Purpose**: Process form submissions and handle form changes
+- **Examples**: Submit handler for invite form, change handler for dynamic fields
+- **Upload to**: Zoho Cliq Bot → Functions
 
 ## 🔧 Configuration
 
-### Backend URL
-Current: `https://tasker-backend-b10p.onrender.com/api/cliq/commands`
+All scripts use the following configuration:
 
-To change:
-1. Open `tasker-slash-command.ds`
-2. Update `BASE_URL` variable (line 18)
-3. Save and redeploy to Cliq
+```deluge
+BASE_URL = "https://tasker-backend-b10p.onrender.com/api/cliq/commands";
+API_KEY = "your_api_key_here";
+```
 
-### API Key
-Current: `34a8176cd72297093e2b349a6fb9b2443dffb51d8291cfe6711063cb4b6eafb3`
+**Remember to update the API_KEY** when rotating credentials.
 
-To change:
-1. Generate new key in backend `.env` file
-2. Update `API_KEY` variable in `tasker-slash-command.ds` (line 19)
-3. Save and redeploy to Cliq
+## 📚 Documentation
 
-## 📝 Deluge Constraints
+For detailed information about form handlers and patterns, see:
+- `docs/ZOHO_CLIQ_FORMS_GUIDE.md` - Comprehensive guide to Zoho Cliq forms and handlers
 
-**Important limitations to remember:**
-- ❌ No function definitions allowed (use inline code only)
-- ❌ No `split()` method (use `indexOf()` + `subString()`)
-- ❌ Limited variable scope (channel context not always available)
-- ✅ Use `Map()` and `List()` for data structures
-- ✅ Use `invokeUrl` for API calls
-- ✅ Use `for each` loops for iteration
+## 🚀 Deployment
 
-## 🐛 Troubleshooting
+1. Open Zoho Cliq → Bots → Your Bot
+2. Navigate to the appropriate section:
+   - Commands → Upload command scripts
+   - Functions → Upload function scripts
+3. Test each command after deployment
 
-### Error: "Variable 'channel' is not defined"
-**Solution:** Already fixed - using empty string for channelId
+## 🔄 Update Workflow
 
-### Error: "Not able to find 'split' function"
-**Solution:** Already fixed - using `indexOf()` and `subString()`
+1. Edit scripts locally in VS Code
+2. Test changes in Zoho Cliq (cannot run locally)
+3. Keep this folder structure for organization
+4. **Never commit to git** - folder is auto-ignored
 
-### Error: "Function definitions are not supported"
-**Solution:** All helper logic is inlined, no function definitions
+## 📋 Available Commands
 
-### API Returns 401/403
-**Solution:** Check API_KEY matches backend environment variable
+### Project Management
+- `/taskerproject create` - Create new project
+- `/taskerproject list` - List all projects
+- `/taskerproject invite` - Invite member to project
+- `/taskerproject details` - View project details (coming soon)
+- `/taskerproject members` - View project members (coming soon)
 
-### Backend not responding
-**Solution:** 
-1. Check Render deployment status
-2. Verify backend URL is correct
-3. Check Firebase initialization
+### Task Management
+- `/tasker create` - Create new task
+- `/tasker list` - List all tasks
+- `/tasker assign` - Assign task to member
+- `/tasker complete` - Mark task as complete
 
-## 📚 Additional Resources
+## 🔗 Related Files
 
-- [Zoho Cliq Developer Docs](https://www.zoho.com/cliq/help/platform/slash-commands.html)
-- [Deluge Script Reference](https://www.zoho.com/deluge/help/)
-- [Tasker Backend API Docs](../docs/API_INTEGRATION.md)
-- [Phase 1 Deployment Guide](../docs/PHASE_1_DEPLOYMENT_GUIDE.md)
+- Backend API: `src/controllers/cliqCommandController.js`
+- Routes: `src/routes/cliqCommandRoutes.js`
+- Documentation: `docs/ZOHO_CLIQ_FORMS_GUIDE.md`
 
-## ✅ Deployment Checklist
+## 📝 File Extension: .dg
 
-- [ ] Backend deployed to Render
-- [ ] Firebase collections created (tasks, projects, invitations)
-- [ ] API_KEY matches backend .env
-- [ ] BASE_URL points to production server
-- [ ] Slash command handler copied to Cliq
-- [ ] Suggestion handler copied to Cliq
-- [ ] Command tested with `/tasker`
-- [ ] Suggestions appear when typing
-- [ ] Task creation works
-- [ ] Task listing works
-- [ ] All 10 commands tested
-
-## 🎯 Next Steps
-
-After deploying these scripts:
-1. Create Firestore collections (tasks, projects, invitations)
-2. Update Firestore security rules
-3. Test all commands thoroughly
-4. Proceed to Phase 2: Interactive Cards & Buttons
-5. Implement message actions
-6. Add bot notifications
+All Deluge scripts use `.dg` extension for:
+- Better IDE syntax highlighting
+- Clear distinction from other files
+- Consistent naming convention
+- Easier file filtering
 
 ---
 
-**Last Updated:** November 23, 2025
-**Backend Version:** 1.0.0
-**Cliq Integration:** Phase 1 Complete
+**Last Updated**: November 25, 2025
