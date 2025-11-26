@@ -5,6 +5,7 @@ const authRoutes = require('./authRoutes');
 const taskRoutes = require('./taskRoutes');
 const cliqRoutes = require('./cliqRoutes');
 const cliqCommandRoutes = require('./cliqCommandRoutes');
+const widgetRoutes = require('./widgetRoutes');
 const testRoutes = require('./testRoutes');
 
 /**
@@ -35,6 +36,7 @@ router.get('/info', (req, res) => {
       tasks: '/api/tasks',
       cliq: '/api/cliq',
       commands: '/api/cliq/commands',
+      widget: '/api/cliq/widget',
       test: '/api/test',
       health: '/api/health',
     },
@@ -45,6 +47,7 @@ router.get('/info', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/cliq/commands', cliqCommandRoutes);
+router.use('/cliq/widget', widgetRoutes);
 router.use('/cliq', cliqRoutes);
 router.use('/test', testRoutes);
 
