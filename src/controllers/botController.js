@@ -251,6 +251,59 @@ exports.getUserLinkStatus = async (req, res) => {
   }
 };
 
+/**
+ * Get user's projects for form dropdown
+ * GET /api/cliq/bot/projects
+ */
+exports.getUserProjects = async (req, res) => {
+  try {
+    const { userId, userEmail } = req.query;
+
+    // Map Cliq user to Tasker user
+    const taskerId = await cliqService.mapCliqUserToTasker(userId, userEmail);
+
+    if (!taskerId) {
+      return res.json({
+        success: true,
+        projects: [{ id: 'personal', name: '📁 Personal (No Project)' }],
+      });
+    }
+
+    // Get Firebase admin
+    const { admin } = require('../config/firebase');
+    const db = admin.firestore();
+
+    // Query projects where user is a member
+    const snapshot = await db.collection('projects')
+      .where('members', 'array-contains', taskerId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const projects = [
+      { id: 'personal', name: '📁 Personal (No Project)' }
+    ];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      projects.push({
+        id: doc.id,
+        name: `📂 ${data.name || 'Unnamed Project'}`,
+      });
+    });
+
+    logger.info(`Fetched ${projects.length} projects for user ${userId}`);
+
+    return res.json({
+      success: true,
+      projects,
+    });
+
+  } catch (error) {
+    logger.error('Get user projects error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // ==================== Intent Handlers ====================
 
 /**
@@ -286,7 +339,31 @@ async function handleListTasks(taskerId, params = {}) {
     // Filter out completed tasks for the list view
     const pendingTasks = tasks.filter(t => t.status !== 'completed');
 
-    return nlpService.formatTaskList(pendingTasks);
+    // Fetch project names for tasks with projectId
+    const { admin } = require('../config/firebase');
+    const db = admin.firestore();
+    const projectIds = [...new Set(pendingTasks.filter(t => t.projectId).map(t => t.projectId))];
+    const projectMap = {};
+
+    if (projectIds.length > 0) {
+      // Fetch all projects in parallel
+      const projectPromises = projectIds.map(id => db.collection('projects').doc(id).get());
+      const projectDocs = await Promise.all(projectPromises);
+      
+      projectDocs.forEach(doc => {
+        if (doc.exists) {
+          projectMap[doc.id] = doc.data().name || 'Unnamed Project';
+        }
+      });
+    }
+
+    // Add project names to tasks
+    const tasksWithProjects = pendingTasks.map(task => ({
+      ...task,
+      projectName: task.projectId ? (projectMap[task.projectId] || 'Unknown Project') : null,
+    }));
+
+    return nlpService.formatTaskList(tasksWithProjects);
 
   } catch (error) {
     logger.error('Error listing tasks:', error);

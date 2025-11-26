@@ -47,4 +47,11 @@ router.post('/user/link', botController.linkUserAccount);
  */
 router.get('/user/:cliqUserId', botController.getUserLinkStatus);
 
+/**
+ * Get user's projects for form dropdown
+ * GET /api/cliq/bot/projects
+ * Query: { userId, userEmail }
+ */
+router.get('/projects', botController.getUserProjects);
+
 module.exports = router;

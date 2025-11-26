@@ -301,16 +301,53 @@ class NLPService {
 
     let text = `📋 **Your Tasks** (${tasks.length})\n\n`;
 
-    tasks.slice(0, 10).forEach((task, index) => {
-      const emoji = priorityEmoji[task.priority] || '📋';
-      const status = statusEmoji[task.status] || '⬜';
-      const dueText = task.dueDate ? ` • Due: ${this.formatDate(task.dueDate)}` : '';
-      
-      text += `${status} ${emoji} **${task.title}**${dueText}\n`;
+    // Group tasks by project
+    const personalTasks = tasks.filter(t => !t.projectName);
+    const projectTasks = tasks.filter(t => t.projectName);
+    
+    // Group project tasks by project name
+    const tasksByProject = {};
+    projectTasks.forEach(task => {
+      const projectName = task.projectName;
+      if (!tasksByProject[projectName]) {
+        tasksByProject[projectName] = [];
+      }
+      tasksByProject[projectName].push(task);
     });
 
-    if (tasks.length > 10) {
-      text += `\n_...and ${tasks.length - 10} more tasks_`;
+    // Show personal tasks first
+    if (personalTasks.length > 0) {
+      text += `**📁 Personal**\n`;
+      personalTasks.slice(0, 5).forEach(task => {
+        const emoji = priorityEmoji[task.priority] || '📋';
+        const status = statusEmoji[task.status] || '⬜';
+        const dueText = task.dueDate ? ` • ${this.formatDate(task.dueDate)}` : '';
+        text += `${status} ${emoji} ${task.title}${dueText}\n`;
+      });
+      if (personalTasks.length > 5) {
+        text += `   _...+${personalTasks.length - 5} more_\n`;
+      }
+      text += '\n';
+    }
+
+    // Show project tasks grouped by project
+    Object.keys(tasksByProject).slice(0, 3).forEach(projectName => {
+      const projectTaskList = tasksByProject[projectName];
+      text += `**📂 ${projectName}**\n`;
+      projectTaskList.slice(0, 3).forEach(task => {
+        const emoji = priorityEmoji[task.priority] || '📋';
+        const status = statusEmoji[task.status] || '⬜';
+        const dueText = task.dueDate ? ` • ${this.formatDate(task.dueDate)}` : '';
+        text += `${status} ${emoji} ${task.title}${dueText}\n`;
+      });
+      if (projectTaskList.length > 3) {
+        text += `   _...+${projectTaskList.length - 3} more_\n`;
+      }
+      text += '\n';
+    });
+
+    if (Object.keys(tasksByProject).length > 3) {
+      text += `_...and ${Object.keys(tasksByProject).length - 3} more projects_\n`;
     }
 
     text += `\n\n💡 _Say "done with [task name]" to complete a task_`;
