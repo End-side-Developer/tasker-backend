@@ -327,7 +327,8 @@ class NLPService {
         type: '+',
         action: {
           type: 'invoke.function',
-          data: { name: 'botCompleteTask', taskId: firstIncomplete.id },
+          data: { name: 'botCompleteTask' },
+          arguments: { taskId: firstIncomplete.id },
         },
       });
     }
