@@ -318,8 +318,12 @@ class NLPService {
     const firstIncomplete = tasks.find(t => t.status !== 'completed');
     
     if (firstIncomplete) {
+      // Max label length is 20 chars. "✅ " is 2 chars, so title can be max 18
+      const shortTitle = firstIncomplete.title.length > 15 
+        ? firstIncomplete.title.substring(0, 12) + '...' 
+        : firstIncomplete.title;
       buttons.push({
-        label: `✅ Complete: ${firstIncomplete.title.substring(0, 20)}...`,
+        label: `✅ ${shortTitle}`,
         type: '+',
         action: {
           type: 'invoke.function',
