@@ -18,6 +18,7 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const indexRoutes = require('./routes/index');
 const taskRoutes = require('./routes/taskRoutes');
 const cliqRoutes = require('./routes/cliqRoutes');
+const botRoutes = require('./routes/botRoutes');
 const authRoutes = require('./routes/authRoutes');
 const testRoutes = require('./routes/testRoutes');
 
@@ -90,6 +91,7 @@ app.use('/api', indexRoutes);
 app.use('/api/auth', authRoutes); // OAuth routes (no auth required for login/callback)
 app.use('/api/tasks', verifyAuth, taskRoutes); // Accepts API key OR JWT token
 app.use('/api/cliq', verifyAuth, cliqRoutes); // Accepts API key OR JWT token
+app.use('/api/cliq/bot', verifyAuth, botRoutes); // TaskerBot endpoints
 app.use('/api/test', testRoutes); // Test endpoints (mixed auth)
 
 // Error handling
