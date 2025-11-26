@@ -71,6 +71,64 @@ class CliqService {
   }
 
   /**
+   * Link Cliq user to Tasker account by email
+   */
+  async linkCliqUser(cliqUserId, cliqUserName, taskerEmail) {
+    try {
+      // First, check if user is already linked
+      const existingMapping = await this.db.collection('cliq_user_mappings').doc(cliqUserId).get();
+      if (existingMapping.exists) {
+        logger.info('User already linked', { cliqUserId });
+        return { 
+          success: true, 
+          taskerId: existingMapping.data().tasker_user_id,
+          alreadyLinked: true 
+        };
+      }
+
+      // Find Tasker user by email
+      const userSnapshot = await this.db.collection('users')
+        .where('email', '==', taskerEmail.toLowerCase())
+        .limit(1)
+        .get();
+
+      if (userSnapshot.empty) {
+        logger.warn('No Tasker account found for email', { taskerEmail });
+        return { 
+          success: false, 
+          error: `No Tasker account found for ${taskerEmail}. Please make sure you're using the same email as your Tasker app.` 
+        };
+      }
+
+      const taskerUserId = userSnapshot.docs[0].id;
+      const taskerUserData = userSnapshot.docs[0].data();
+
+      // Create the mapping
+      await this.createUserMapping(cliqUserId, cliqUserName, taskerUserId);
+
+      logger.info('Cliq user linked successfully', { 
+        cliqUserId, 
+        cliqUserName, 
+        taskerUserId,
+        taskerEmail 
+      });
+
+      return { 
+        success: true, 
+        taskerId: taskerUserId,
+        taskerName: taskerUserData.displayName || taskerUserData.name || taskerEmail
+      };
+
+    } catch (error) {
+      logger.error('Error linking Cliq user:', error);
+      return { 
+        success: false, 
+        error: 'Failed to link account. Please try again.' 
+      };
+    }
+  }
+
+  /**
    * Store Cliq task mapping
    */
   async storeTaskMapping(taskId, cliqContext) {

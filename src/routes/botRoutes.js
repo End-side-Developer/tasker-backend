@@ -34,4 +34,17 @@ router.post('/context', botController.handleContext);
  */
 router.post('/channel-unlink', botController.handleChannelUnlink);
 
+/**
+ * Link Cliq user to Tasker account
+ * POST /api/cliq/bot/user/link
+ * Body: { cliqUserId, cliqUserName, taskerEmail }
+ */
+router.post('/user/link', botController.linkUserAccount);
+
+/**
+ * Get user link status
+ * GET /api/cliq/bot/user/:cliqUserId
+ */
+router.get('/user/:cliqUserId', botController.getUserLinkStatus);
+
 module.exports = router;
