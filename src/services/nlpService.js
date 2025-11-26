@@ -313,31 +313,23 @@ class NLPService {
       text += `\n_...and ${tasks.length - 10} more tasks_`;
     }
 
-    // Build task buttons for quick actions
-    const buttons = [];
-    const firstIncomplete = tasks.find(t => t.status !== 'completed');
-    
-    if (firstIncomplete) {
-      // Max label length is 20 chars. "✅ " is 2 chars, so title can be max 18
-      const shortTitle = firstIncomplete.title.length > 15 
-        ? firstIncomplete.title.substring(0, 12) + '...' 
-        : firstIncomplete.title;
-      buttons.push({
-        label: `✅ ${shortTitle}`,
-        type: '+',
-        action: {
-          type: 'invoke.function',
-          data: { name: 'botCompleteTask' },
-          arguments: { taskId: firstIncomplete.id },
-        },
-      });
-    }
+    text += `\n\n💡 _Say "done with [task name]" to complete a task_`;
 
-    buttons.push({
-      label: '➕ New Task',
-      type: '+',
-      action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
-    });
+    // Build task buttons for quick actions
+    // Note: Zoho Cliq invoke.function only allows "data.name", no custom params
+    // So we can't pass taskId via buttons - user can complete via chat instead
+    const buttons = [
+      {
+        label: '➕ New Task',
+        type: '+',
+        action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
+      },
+      {
+        label: '🔄 Refresh',
+        type: '+',
+        action: { type: 'invoke.function', data: { name: 'botListTasks' } },
+      },
+    ];
 
     return { text, buttons };
   }
