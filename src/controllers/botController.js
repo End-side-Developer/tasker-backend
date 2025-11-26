@@ -342,13 +342,13 @@ async function handleCompleteTask(taskerId, params) {
         {
           label: '📋 Show Remaining',
           type: '+',
-          action: { type: 'invoke.function', name: 'botListTasks' },
+          action: { type: 'invoke.function', data: { name: 'botListTasks' } },
         },
       ] : [
         {
           label: '➕ New Task',
           type: '+',
-          action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+          action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
         },
       ],
     };
@@ -373,7 +373,7 @@ async function handleCreateTask(taskerId, params, userName) {
           {
             label: '📝 Create Task Form',
             type: '+',
-            action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+            action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
           },
         ],
       };
@@ -395,14 +395,13 @@ async function handleCreateTask(taskerId, params, userName) {
           type: '+',
           action: {
             type: 'invoke.function',
-            name: 'editTaskForm',
-            params: { taskId: newTask.id },
+            data: { name: 'editTaskForm', taskId: newTask.id },
           },
         },
         {
           label: '📋 View Tasks',
           type: '+',
-          action: { type: 'invoke.function', name: 'botListTasks' },
+          action: { type: 'invoke.function', data: { name: 'botListTasks' } },
         },
       ],
     };

@@ -203,12 +203,12 @@ class NLPService {
         {
           label: '📋 My Tasks',
           type: '+',
-          action: { type: 'invoke.function', name: 'botListTasks' },
+          action: { type: 'invoke.function', data: { name: 'botListTasks' } },
         },
         {
           label: '➕ New Task',
           type: '+',
-          action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+          action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
         },
       ],
     };
@@ -245,7 +245,7 @@ class NLPService {
         {
           label: '❓ Help',
           type: '+',
-          action: { type: 'invoke.function', name: 'botShowHelp' },
+          action: { type: 'invoke.function', data: { name: 'botShowHelp' } },
         },
       ],
     };
@@ -263,7 +263,7 @@ class NLPService {
         {
           label: '🔗 Link Account',
           type: '+',
-          action: { type: 'invoke.function', name: 'showLinkForm' },
+          action: { type: 'invoke.function', data: { name: 'showLinkForm' } },
         },
       ],
     };
@@ -281,7 +281,7 @@ class NLPService {
           {
             label: '➕ Create Task',
             type: '+',
-            action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+            action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
           },
         ],
       };
@@ -323,8 +323,7 @@ class NLPService {
         type: '+',
         action: {
           type: 'invoke.function',
-          name: 'completeTask',
-          params: { taskId: firstIncomplete.id },
+          data: { name: 'botCompleteTask', taskId: firstIncomplete.id },
         },
       });
     }
@@ -332,7 +331,7 @@ class NLPService {
     buttons.push({
       label: '➕ New Task',
       type: '+',
-      action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+      action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
     });
 
     return { text, buttons };
@@ -387,12 +386,12 @@ class NLPService {
         {
           label: '📋 All Tasks',
           type: '+',
-          action: { type: 'invoke.function', name: 'botListTasks' },
+          action: { type: 'invoke.function', data: { name: 'botListTasks' } },
         },
         {
           label: '➕ New Task',
           type: '+',
-          action: { type: 'invoke.function', name: 'showCreateTaskForm' },
+          action: { type: 'invoke.function', data: { name: 'showCreateTaskForm' } },
         },
       ],
     };
