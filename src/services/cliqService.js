@@ -134,14 +134,26 @@ class CliqService {
   async storeTaskMapping(taskId, cliqContext) {
     try {
       const { admin } = require('../config/firebase');
-      await this.db.collection('cliq_task_mappings').doc(taskId).set({
+      
+      // Build mapping data, only including defined values
+      const mappingData = {
         task_id: taskId,
-        cliq_user_id: cliqContext.userId,
-        cliq_channel_id: cliqContext.channelId,
-        cliq_message_id: cliqContext.messageId,
-        source: cliqContext.source,
+        cliq_user_id: cliqContext.userId || null,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+      
+      // Only add optional fields if they exist
+      if (cliqContext.channelId) {
+        mappingData.cliq_channel_id = cliqContext.channelId;
+      }
+      if (cliqContext.messageId) {
+        mappingData.cliq_message_id = cliqContext.messageId;
+      }
+      if (cliqContext.source) {
+        mappingData.source = cliqContext.source;
+      }
+      
+      await this.db.collection('cliq_task_mappings').doc(taskId).set(mappingData);
 
       logger.info('Cliq task mapping stored', { taskId });
       return { success: true };
