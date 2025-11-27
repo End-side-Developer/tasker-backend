@@ -1,7 +1,16 @@
 const cliqService = require('../services/cliqService');
 const logger = require('../config/logger');
-const { db } = require('../config/firebase');
+const { admin } = require('../config/firebase');
 const crypto = require('crypto');
+
+// Lazy-loaded Firestore instance
+let _db = null;
+const getDb = () => {
+  if (!_db) {
+    _db = admin.firestore();
+  }
+  return _db;
+};
 
 /**
  * Cliq Controller - Handles Cliq-specific operations
@@ -28,7 +37,7 @@ class CliqController {
       // Store the code in Firestore with 10-minute expiry
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
-      await db.collection('cliq_linking_codes').doc(code).set({
+      await getDb().collection('cliq_linking_codes').doc(code).set({
         code,
         tasker_user_id: userId,
         tasker_email: email,
@@ -68,7 +77,7 @@ class CliqController {
       }
 
       // Find and deactivate the user mapping
-      const mappingsRef = db.collection('cliq_user_mappings');
+      const mappingsRef = getDb().collection('cliq_user_mappings');
       const snapshot = await mappingsRef
         .where('tasker_user_id', '==', userId)
         .where('is_active', '==', true)
@@ -82,7 +91,7 @@ class CliqController {
       }
 
       // Deactivate all active mappings for this user
-      const batch = db.batch();
+      const batch = getDb().batch();
       snapshot.docs.forEach((doc) => {
         batch.update(doc.ref, {
           is_active: false,
