@@ -229,7 +229,7 @@ class CliqNotifierService {
       ],
       buttons: [
         { label: '👁 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}},
-        { label: '✓ Complete', type: '+', action: { type: 'invoke.function', data: { name: 'completeTaskFromNotification', taskId: task.id }}}
+        { label: '✓ Mark Complete', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}}
       ]
     };
   }
@@ -253,8 +253,7 @@ class CliqNotifierService {
       card: { title: `${urgencyIcon} ${task.title}`, theme: 'modern-inline' },
       buttons: [
         { label: '👁 View', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}},
-        { label: '✓ Complete Now', type: '+', action: { type: 'invoke.function', data: { name: 'completeTaskFromNotification', taskId: task.id }}},
-        { label: '⏰ Snooze 1h', type: '+', action: { type: 'invoke.function', data: { name: 'snoozeReminder', taskId: task.id, hours: 1 }}}
+        { label: '✓ Complete Now', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}}
       ]
     };
   }
@@ -269,8 +268,8 @@ class CliqNotifierService {
         { 'Days Overdue': daysOverdue.toString() }
       ]}],
       buttons: [
-        { label: '✓ Complete Now', type: '+', action: { type: 'invoke.function', data: { name: 'completeTaskFromNotification', taskId: task.id }}},
-        { label: '📅 Extend Deadline', type: '+', action: { type: 'invoke.function', data: { name: 'extendDeadline', taskId: task.id }}}
+        { label: '✓ Complete Now', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}},
+        { label: '📅 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}}
       ]
     };
   }
@@ -311,8 +310,7 @@ class CliqNotifierService {
       card: { title: `💬 ${author || 'Someone'} commented`, theme: 'modern-inline' },
       slides: [{ type: 'text', data: preview }],
       buttons: [
-        { label: '👁 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}},
-        { label: '💬 Reply', type: '+', action: { type: 'invoke.function', data: { name: 'replyToComment', taskId: task.id }}}
+        { label: '👁 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}}
       ]
     };
   }
@@ -336,8 +334,8 @@ class CliqNotifierService {
         { type: 'text', data: project.description || 'No description' }
       ],
       buttons: [
-        { label: '✓ Accept', type: '+', action: { type: 'invoke.function', data: { name: 'acceptProjectInvite', projectId: project.id }}},
-        { label: '✗ Decline', type: '-', action: { type: 'invoke.function', data: { name: 'declineProjectInvite', projectId: project.id }}}
+        // Use open.url to deep link to the app - this allows custom data
+        { label: '📱 Open in Tasker', type: '+', action: { type: 'open.url', data: { web: `tasker://project/${project.id}/accept` }}}
       ]
     };
   }
