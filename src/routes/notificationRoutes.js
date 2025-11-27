@@ -41,4 +41,11 @@ router.post('/dnd', notificationController.setDoNotDisturb);
  */
 router.get('/history', notificationController.getHistory);
 
+/**
+ * Test webhook - sends a test notification to Cliq
+ * POST /api/cliq/notifications/test
+ * Body: { message? }
+ */
+router.post('/test', notificationController.testWebhook);
+
 module.exports = router;

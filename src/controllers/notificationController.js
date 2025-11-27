@@ -7,6 +7,7 @@
 const logger = require('../config/logger');
 const { admin } = require('../config/firebase');
 const cliqService = require('../services/cliqService');
+const cliqNotifierService = require('../services/cliqNotifierService');
 
 const db = admin.firestore();
 
@@ -393,6 +394,69 @@ exports.getHistory = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get notification history'
+    });
+  }
+};
+
+/**
+ * Test webhook - sends a test notification to Cliq
+ */
+exports.testWebhook = async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    const testPayload = {
+      text: message || '🧪 Test notification from Tasker Backend!',
+      card: {
+        title: '✅ Webhook Test Successful',
+        theme: 'modern-inline'
+      },
+      slides: [
+        {
+          type: 'text',
+          data: `This is a test notification sent at ${new Date().toLocaleString()}`
+        },
+        {
+          type: 'label',
+          title: 'Server Info',
+          data: [
+            { 'Environment': process.env.NODE_ENV || 'development' },
+            { 'Bot Name': process.env.CLIQ_BOT_UNIQUE_NAME || 'taskerbot' }
+          ]
+        }
+      ],
+      buttons: [
+        {
+          label: '📚 View Docs',
+          type: '+',
+          action: {
+            type: 'open.url',
+            data: { web: 'https://github.com/ashu-debuger/tasker-backend' }
+          }
+        }
+      ]
+    };
+    
+    const result = await cliqNotifierService.sendToCliq(testPayload, 'bot');
+    
+    if (result.success) {
+      logger.info('Test webhook sent successfully');
+      res.json({
+        success: true,
+        data: {
+          message: 'Test notification sent successfully!',
+          webhookResponse: result.data
+        }
+      });
+    } else {
+      throw new Error(result.reason || 'Failed to send webhook');
+    }
+    
+  } catch (error) {
+    logger.error('Error testing webhook:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send test notification'
     });
   }
 };
