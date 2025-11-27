@@ -406,6 +406,126 @@ exports.getHistory = async (req, res) => {
 };
 
 /**
+ * Send a notification to a user (called from Flutter app)
+ * POST /api/cliq/notifications/send
+ */
+exports.sendNotification = async (req, res) => {
+  try {
+    const { userId, type, data } = req.body;
+    
+    if (!userId || !type) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId and type are required'
+      });
+    }
+    
+    logger.info(`Sending ${type} notification to user ${userId}`);
+    
+    // Build notification object based on type
+    let notification = { type };
+    
+    switch (type) {
+      case 'project_invite':
+        notification = {
+          type: 'project_invite',
+          project: {
+            id: data.projectId,
+            name: data.projectName,
+            description: data.projectDescription || ''
+          },
+          invitedBy: data.invitedByName || 'A team member',
+          role: data.role || 'member'
+        };
+        break;
+        
+      case 'member_joined':
+        notification = {
+          type: 'member_joined',
+          project: {
+            id: data.projectId,
+            name: data.projectName
+          },
+          member: {
+            id: data.memberId,
+            name: data.memberName,
+            email: data.memberEmail,
+            role: data.role || 'member'
+          }
+        };
+        break;
+        
+      case 'task_assigned':
+        notification = {
+          type: 'task_assigned',
+          task: {
+            id: data.taskId,
+            title: data.taskTitle,
+            description: data.taskDescription,
+            priority: data.priority,
+            dueDate: data.dueDate
+          },
+          assignedBy: data.assignedByName || 'A team member'
+        };
+        break;
+        
+      case 'task_completed':
+        notification = {
+          type: 'task_completed',
+          task: {
+            id: data.taskId,
+            title: data.taskTitle
+          },
+          completedBy: data.completedByName || 'A team member'
+        };
+        break;
+        
+      case 'comment_added':
+        notification = {
+          type: 'comment_added',
+          task: {
+            id: data.taskId,
+            title: data.taskTitle
+          },
+          comment: {
+            text: data.commentText
+          },
+          author: data.authorName || 'Someone'
+        };
+        break;
+        
+      default:
+        notification = { type, ...data };
+    }
+    
+    // Send via cliqNotifierService
+    const result = await cliqNotifierService.notifyUser(userId, notification);
+    
+    if (result.success) {
+      logger.info(`${type} notification sent successfully to ${userId}`);
+      res.json({
+        success: true,
+        data: { message: 'Notification sent successfully' }
+      });
+    } else {
+      logger.warn(`Failed to send ${type} notification: ${result.reason}`);
+      res.json({
+        success: false,
+        error: result.reason || 'Failed to send notification',
+        reason: result.reason
+      });
+    }
+    
+  } catch (error) {
+    logger.error('Error sending notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send notification'
+    });
+  }
+};
+
+/**
  * Test webhook - sends a test notification to Cliq
  */
 exports.testWebhook = async (req, res) => {

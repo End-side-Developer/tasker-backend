@@ -42,6 +42,13 @@ router.post('/dnd', notificationController.setDoNotDisturb);
 router.get('/history', notificationController.getHistory);
 
 /**
+ * Send a notification to a user (from Flutter app)
+ * POST /api/cliq/notifications/send
+ * Body: { userId, type, data }
+ */
+router.post('/send', notificationController.sendNotification);
+
+/**
  * Test webhook - sends a test notification to Cliq
  * POST /api/cliq/notifications/test
  * Body: { message? }
