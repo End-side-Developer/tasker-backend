@@ -304,6 +304,65 @@ exports.getUserProjects = async (req, res) => {
   }
 };
 
+/**
+ * Update task from Cliq form
+ * POST /api/cliq/bot/update-task
+ */
+exports.updateTask = async (req, res) => {
+  try {
+    const { taskId, userId, userEmail, dueDate, priority, description } = req.body;
+
+    logger.info('Update task request', { taskId, userId, dueDate, priority });
+
+    if (!taskId) {
+      return res.json({ success: false, error: 'Task ID is required' });
+    }
+
+    // Map Cliq user to Tasker user
+    const taskerId = await cliqService.mapCliqUserToTasker(userId, userEmail);
+
+    if (!taskerId) {
+      return res.json({ success: false, error: 'Account not linked. Use /tasker link first.' });
+    }
+
+    // Build updates object
+    const updates = {};
+    
+    if (dueDate) {
+      // Parse date string to ISO format
+      updates.dueDate = new Date(dueDate).toISOString();
+    }
+    
+    if (priority) {
+      updates.priority = priority.toLowerCase();
+    }
+    
+    if (description) {
+      updates.description = description;
+    }
+
+    // Check if any updates
+    if (Object.keys(updates).length === 0) {
+      return res.json({ success: false, error: 'No updates provided' });
+    }
+
+    // Update the task
+    const updatedTask = await taskService.updateTask(taskId, updates);
+
+    logger.info('Task updated successfully', { taskId, updates });
+
+    return res.json({
+      success: true,
+      message: 'Task updated successfully',
+      task: updatedTask,
+    });
+
+  } catch (error) {
+    logger.error('Update task error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // ==================== Intent Handlers ====================
 
 /**

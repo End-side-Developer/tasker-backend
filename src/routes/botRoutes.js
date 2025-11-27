@@ -54,4 +54,11 @@ router.get('/user/:cliqUserId', botController.getUserLinkStatus);
  */
 router.get('/projects', botController.getUserProjects);
 
+/**
+ * Update task (from Cliq form)
+ * POST /api/cliq/bot/update-task
+ * Body: { taskId, userId, userEmail, dueDate?, priority?, description? }
+ */
+router.post('/update-task', botController.updateTask);
+
 module.exports = router;
