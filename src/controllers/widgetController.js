@@ -91,6 +91,7 @@ exports.getDashboard = async (req, res) => {
       title: focusTask.title,
       priority: focusTask.priority || 'medium',
       dueDate: formatDueDate(focusTask.dueDate),
+      dueTime: formatDueTime(focusTask.dueDate),
       isOverdue: isOverdue(focusTask.dueDate),
     } : null;
 
@@ -392,6 +393,70 @@ exports.completeTask = async (req, res) => {
   } catch (error) {
     logger.error('Complete task error:', error);
     return res.status(500).json({ success: false, error: 'Failed to complete task' });
+  }
+};
+
+/**
+ * Get task details for widget
+ * GET /api/cliq/widget/task-details
+ */
+exports.getTaskDetails = async (req, res) => {
+  try {
+    const { userId, userEmail, taskId } = req.query;
+
+    if (!userId || !taskId) {
+      return res.status(400).json({ success: false, error: 'userId and taskId are required' });
+    }
+
+    const taskerId = await cliqService.mapCliqUserToTasker(userId, userEmail);
+    if (!taskerId) {
+      return res.status(404).json({ success: false, error: 'User not linked' });
+    }
+
+    // Get task
+    const task = await taskService.getTask(taskId);
+    if (!task) {
+      return res.status(404).json({ success: false, error: 'Task not found' });
+    }
+
+    // Get project name if task has projectId
+    let projectName = null;
+    if (task.projectId) {
+      const { admin } = require('../config/firebase');
+      const db = admin.firestore();
+      const projectDoc = await db.collection('projects').doc(task.projectId).get();
+      if (projectDoc.exists) {
+        projectName = projectDoc.data().name || 'Unnamed Project';
+      }
+    }
+
+    // Format task for response
+    const formattedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description || null,
+      priority: task.priority || 'medium',
+      status: task.status || 'pending',
+      dueDate: formatDueDate(task.dueDate),
+      dueTime: formatDueTime(task.dueDate),
+      isOverdue: task.status !== 'completed' && isOverdue(task.dueDate),
+      projectId: task.projectId || null,
+      projectName: projectName,
+      createdAt: task.createdAt ? formatDueDate(task.createdAt) : null,
+    };
+
+    logger.info('Task details loaded from widget', { userId, taskId });
+
+    return res.json({
+      success: true,
+      data: {
+        task: formattedTask,
+      },
+    });
+
+  } catch (error) {
+    logger.error('Task details error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to load task details' });
   }
 };
 

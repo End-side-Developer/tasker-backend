@@ -42,4 +42,11 @@ router.post('/quick-task', widgetController.createQuickTask);
  */
 router.post('/complete-task', widgetController.completeTask);
 
+/**
+ * Get task details for widget
+ * GET /api/cliq/widget/task-details
+ * Query: { userId, userEmail, taskId }
+ */
+router.get('/task-details', widgetController.getTaskDetails);
+
 module.exports = router;
