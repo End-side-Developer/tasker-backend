@@ -5,6 +5,7 @@ const compression = require('compression');
 const morgan = require('morgan');
 const session = require('express-session');
 const passport = require('passport');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const { initializeFirebase } = require('./config/firebase');
@@ -13,6 +14,9 @@ const logger = require('./config/logger');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { verifyApiKey, verifyAuth } = require('./middleware/auth');
 const { apiLimiter } = require('./middleware/rateLimiter');
+
+// Import services
+const firestoreListenerService = require('./services/firestoreListenerService');
 
 // Import routes
 const indexRoutes = require('./routes/index');
@@ -105,11 +109,39 @@ const server = app.listen(PORT, () => {
   logger.info(`🚀 Tasker Backend running on port ${PORT}`);
   logger.info(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔗 Health check: http://localhost:${PORT}/api/health`);
+
+  // Initialize Firestore listeners for real-time notifications
+  try {
+    firestoreListenerService.initialize();
+  } catch (error) {
+    logger.error('Failed to initialize Firestore listeners:', error);
+  }
+
+  // Setup scheduled tasks for notifications
+  setupScheduledTasks();
 });
+
+// Setup scheduled notification checks
+function setupScheduledTasks() {
+  // Check for overdue tasks daily at 9 AM
+  cron.schedule('0 9 * * *', async () => {
+    logger.info('⏰ Running scheduled overdue task check...');
+    await firestoreListenerService.checkOverdueTasks();
+  });
+
+  // Check for tasks due soon every hour
+  cron.schedule('0 * * * *', async () => {
+    logger.info('⏰ Running scheduled due-soon task check...');
+    await firestoreListenerService.checkDueSoonTasks();
+  });
+
+  logger.info('📅 Scheduled notification tasks configured');
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM signal received: closing HTTP server');
+  firestoreListenerService.shutdown();
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);
@@ -118,6 +150,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   logger.info('SIGINT signal received: closing HTTP server');
+  firestoreListenerService.shutdown();
   server.close(() => {
     logger.info('HTTP server closed');
     process.exit(0);
