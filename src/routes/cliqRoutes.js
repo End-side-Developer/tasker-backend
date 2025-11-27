@@ -10,6 +10,9 @@ const cliqController = require('../controllers/cliqController');
 router.post('/bot/generate-link-code', cliqController.generateLinkCode);
 router.post('/bot/unlink', cliqController.unlinkAccount);
 
+// Link with code (called from Cliq slash command)
+router.post('/link-with-code', cliqController.linkWithCode);
+
 // Link user (called from Cliq command)
 router.post('/link-user', cliqController.linkUser);
 

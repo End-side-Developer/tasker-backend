@@ -113,6 +113,100 @@ class CliqController {
   }
 
   /**
+   * Link Cliq account using a code from Flutter app
+   * POST /api/cliq/link-with-code
+   */
+  async linkWithCode(req, res, next) {
+    try {
+      const { code, cliqUserId, cliqUserName, cliqUserEmail } = req.body;
+
+      if (!code || !cliqUserId) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Code and Cliq user ID are required' },
+        });
+      }
+
+      // Look up the code in Firestore
+      const codeDoc = await getDb().collection('cliq_linking_codes').doc(code.toUpperCase()).get();
+
+      if (!codeDoc.exists) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Invalid linking code. Please generate a new code from the Tasker app.' },
+        });
+      }
+
+      const codeData = codeDoc.data();
+
+      // Check if code is expired
+      const expiresAt = codeData.expires_at.toDate ? codeData.expires_at.toDate() : new Date(codeData.expires_at);
+      if (new Date() > expiresAt) {
+        // Delete expired code
+        await codeDoc.ref.delete();
+        return res.status(400).json({
+          success: false,
+          error: { message: 'This code has expired. Please generate a new code from the Tasker app.' },
+        });
+      }
+
+      // Check if code is already used
+      if (codeData.used) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'This code has already been used. Please generate a new code.' },
+        });
+      }
+
+      // Check if this Cliq user is already linked
+      const existingMapping = await getDb().collection('cliq_user_mappings')
+        .where('cliq_user_id', '==', cliqUserId)
+        .where('is_active', '==', true)
+        .get();
+
+      if (!existingMapping.empty) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'This Cliq account is already linked to a Tasker account. Unlink first to link to a different account.' },
+        });
+      }
+
+      // Create the user mapping
+      const mappingId = `${cliqUserId}_${codeData.tasker_user_id}`;
+      await getDb().collection('cliq_user_mappings').doc(mappingId).set({
+        cliq_user_id: cliqUserId,
+        cliq_user_name: cliqUserName || 'Unknown',
+        cliq_user_email: cliqUserEmail || null,
+        tasker_user_id: codeData.tasker_user_id,
+        tasker_email: codeData.tasker_email,
+        linked_at: new Date(),
+        is_active: true,
+      });
+
+      // Mark the code as used
+      await codeDoc.ref.update({
+        used: true,
+        used_at: new Date(),
+        used_by_cliq_user: cliqUserId,
+      });
+
+      logger.info(`Linked Cliq user ${cliqUserId} to Tasker user ${codeData.tasker_user_id}`);
+
+      res.json({
+        success: true,
+        message: 'Account linked successfully',
+        data: {
+          taskerUserId: codeData.tasker_user_id,
+          taskerEmail: codeData.tasker_email,
+        },
+      });
+    } catch (error) {
+      logger.error('Error in linkWithCode controller:', error);
+      next(error);
+    }
+  }
+
+  /**
    * Link Cliq user to Tasker account
    * POST /api/cliq/link-user
    */
