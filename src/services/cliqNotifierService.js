@@ -226,10 +226,6 @@ class CliqNotifierService {
           { 'Priority': this.getPriorityText(task.priority) },
           { 'Due': this.formatDate(task.dueDate) }
         ]}
-      ],
-      buttons: [
-        { label: '👁 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}},
-        { label: '✓ Mark Complete', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}}
       ]
     };
   }
@@ -250,11 +246,7 @@ class CliqNotifierService {
 
     return {
       text: `${urgencyIcon} ${urgencyText}`,
-      card: { title: `${urgencyIcon} ${task.title}`, theme: 'modern-inline' },
-      buttons: [
-        { label: '👁 View', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}},
-        { label: '✓ Complete Now', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}}
-      ]
+      card: { title: `${urgencyIcon} ${task.title}`, theme: 'modern-inline' }
     };
   }
 
@@ -266,11 +258,7 @@ class CliqNotifierService {
       slides: [{ type: 'label', data: [
         { 'Originally Due': this.formatDate(task.dueDate) },
         { 'Days Overdue': daysOverdue.toString() }
-      ]}],
-      buttons: [
-        { label: '✓ Complete Now', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}/complete` }}},
-        { label: '📅 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}}
-      ]
+      ]}]
     };
   }
 
@@ -308,10 +296,7 @@ class CliqNotifierService {
     return {
       text: `💬 New comment on "${task.title}"`,
       card: { title: `💬 ${author || 'Someone'} commented`, theme: 'modern-inline' },
-      slides: [{ type: 'text', data: preview }],
-      buttons: [
-        { label: '👁 View Task', type: '+', action: { type: 'open.url', data: { web: `tasker://task/${task.id}` }}}
-      ]
+      slides: [{ type: 'text', data: preview }]
     };
   }
 
@@ -332,10 +317,6 @@ class CliqNotifierService {
       slides: [
         { type: 'text', data: `Invited by ${invitedBy} as ${role || 'member'}` },
         { type: 'text', data: project.description || 'No description' }
-      ],
-      buttons: [
-        // Use open.url to deep link to the app - this allows custom data
-        { label: '📱 Open in Tasker', type: '+', action: { type: 'open.url', data: { web: `tasker://project/${project.id}/accept` }}}
       ]
     };
   }
