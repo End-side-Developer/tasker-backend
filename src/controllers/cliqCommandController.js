@@ -143,14 +143,16 @@ exports.listTasks = async (req, res) => {
     if (status) {
       query = query.where('status', '==', status);
     }
-    // Note: priority field doesn't exist in schema, removed
+    if (priority) {
+      // Priority is stored as enum string: low, medium, high, urgent
+      query = query.where('priority', '==', priority);
+    }
     if (projectId) {
       query = query.where('projectId', '==', projectId);
     }
     if (assignedTo) {
       query = query.where('assignees', 'array-contains', assignedTo);
     }
-    // Note: no createdBy field in schema, tasks are linked via assignees
 
     // Order by creation date
     query = query.orderBy('createdAt', 'desc').limit(parseInt(limit));
@@ -167,20 +169,33 @@ exports.listTasks = async (req, res) => {
 
     logger.info(`Listed ${tasks.length} tasks via Cliq`);
 
+    // Priority emoji helper
+    const getPriorityEmoji = (p) => {
+      const emojis = { urgent: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+      return emojis[p] || '⚪';
+    };
+
     // Build text response
-    let textResponse = `📋 **Your Tasks (${tasks.length})**\n\n`;
+    let filterInfo = '';
+    if (priority) filterInfo += `Priority: ${priority} `;
+    if (status) filterInfo += `Status: ${status} `;
+    
+    let textResponse = `📋 **Tasks${filterInfo ? ' (' + filterInfo.trim() + ')' : ''} - ${tasks.length} found**\n\n`;
     
     if (tasks.length === 0) {
-      textResponse = status === 'pending' 
-        ? '✅ Great! You have no pending tasks.' 
-        : '📋 No tasks found matching your criteria.';
+      textResponse = priority 
+        ? `📋 No ${priority} priority tasks found.`
+        : status === 'pending' 
+          ? '✅ Great! You have no pending tasks.' 
+          : '📋 No tasks found matching your criteria.';
     } else {
       const displayTasks = tasks.slice(0, 10);
       displayTasks.forEach((task, index) => {
         const statusEmoji = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '📌';
-        textResponse += `${index + 1}. ${statusEmoji} ${task.title}\n`;
+        const priorityEmoji = getPriorityEmoji(task.priority);
+        textResponse += `${index + 1}. ${statusEmoji} ${priorityEmoji} ${task.title}\n`;
         if (task.dueDate) {
-          const dueDate = task.dueDate.toDate();
+          const dueDate = task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
           textResponse += `   Due: ${dueDate.toLocaleDateString()}\n`;
         }
         textResponse += `\n`;
