@@ -9,7 +9,14 @@ const { admin } = require('../config/firebase');
 const cliqService = require('../services/cliqService');
 const cliqNotifierService = require('../services/cliqNotifierService');
 
-const db = admin.firestore();
+// Lazy-loaded Firestore instance
+let _db = null;
+const getDb = () => {
+  if (!_db) {
+    _db = admin.firestore();
+  }
+  return _db;
+};
 
 // Default notification preferences
 const DEFAULT_PREFERENCES = {
@@ -79,7 +86,7 @@ exports.getSettings = async (req, res) => {
     }
     
     // Get user's notification settings
-    const settingsDoc = await db.collection('users')
+    const settingsDoc = await getDb().collection('users')
       .doc(taskerUserId)
       .collection('settings')
       .doc('notifications')
@@ -97,7 +104,7 @@ exports.getSettings = async (req, res) => {
         settings.doNotDisturb.until = null;
         
         // Update in Firestore
-        await db.collection('users')
+        await getDb().collection('users')
           .doc(taskerUserId)
           .collection('settings')
           .doc('notifications')
@@ -167,7 +174,7 @@ exports.updateSettings = async (req, res) => {
     }
     
     // Update settings
-    await db.collection('users')
+    await getDb().collection('users')
       .doc(taskerUserId)
       .collection('settings')
       .doc('notifications')
@@ -230,7 +237,7 @@ exports.muteProject = async (req, res) => {
       mutedAt: muted ? admin.firestore.FieldValue.serverTimestamp() : null
     };
     
-    await db.collection('users')
+    await getDb().collection('users')
       .doc(taskerUserId)
       .collection('settings')
       .doc('notifications')
@@ -292,7 +299,7 @@ exports.setDoNotDisturb = async (req, res) => {
     }
     
     // Update DND settings
-    await db.collection('users')
+    await getDb().collection('users')
       .doc(taskerUserId)
       .collection('settings')
       .doc('notifications')
@@ -359,14 +366,14 @@ exports.getHistory = async (req, res) => {
     }
     
     // Build query
-    let query = db.collection('notification_logs')
+    let query = getDb().collection('notification_logs')
       .where('userId', '==', taskerUserId)
       .orderBy('sentAt', 'desc')
       .limit(parseInt(limit));
     
     // Add pagination cursor if provided
     if (after) {
-      const afterDoc = await db.collection('notification_logs').doc(after).get();
+      const afterDoc = await getDb().collection('notification_logs').doc(after).get();
       if (afterDoc.exists) {
         query = query.startAfter(afterDoc);
       }
