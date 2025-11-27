@@ -87,16 +87,17 @@ class CliqNotifierService {
       }
 
       const message = this.formatNotification(notification);
+      
+      // Use bot_message endpoint for direct user messages
+      // The payload includes the Cliq user ID to target
       const payload = {
         ...message,
-        target_user: {
-          id: mapping.cliq_user_id,
-          tasker_id: userId
-        },
-        notification_type: notification.type
+        // Cliq uses 'uniquename' or email to identify the target user
+        broadcast: false,
+        userids: [mapping.cliq_user_id]
       };
 
-      await this.sendToCliq(payload, 'bot');
+      await this.sendToCliq(payload, 'bot_message');
       await this.logNotification(userId, notification);
 
       return { success: true };
