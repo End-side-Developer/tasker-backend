@@ -7,6 +7,11 @@
  * - Bot Incoming: https://cliq.zoho.com/api/v2/bots/{bot-unique-name}/incoming?zapikey={token}
  * - Bot Message: https://cliq.zoho.com/api/v2/bots/{bot-unique-name}/message?zapikey={token}
  * - Channel: https://cliq.zoho.com/api/v2/channelsbyname/{channel-name}/message?zapikey={token}
+ * 
+ * Base URLs (from Cliq UI - these are WITHOUT the zapikey):
+ * - API Endpoint: https://cliq.zoho.com/api/v2/bots/taskerbot/message
+ * - Incoming Webhook: https://cliq.zoho.com/api/v2/bots/taskerbot/incoming
+ * - Alert API: https://cliq.zoho.com/api/v2/bots/taskerbot/calls
  */
 
 const axios = require('axios');
