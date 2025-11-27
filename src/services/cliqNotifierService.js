@@ -88,19 +88,25 @@ class CliqNotifierService {
 
       const message = this.formatNotification(notification);
       
-      // Use bot_message endpoint for direct user messages
-      // The payload includes the Cliq user ID to target
+      // Use incoming webhook - it sends to users who have interacted with the bot
+      // Add user targeting info for logging/tracking
       const payload = {
         ...message,
-        // Cliq uses 'uniquename' or email to identify the target user
-        broadcast: false,
-        userids: [mapping.cliq_user_id]
+        // Include target info for reference
+        _target: {
+          cliq_user_id: mapping.cliq_user_id,
+          tasker_user_id: userId
+        }
       };
 
-      await this.sendToCliq(payload, 'bot_message');
-      await this.logNotification(userId, notification);
+      // Use 'bot' (incoming webhook) - this sends to bot conversations
+      const result = await this.sendToCliq(payload, 'bot');
+      
+      if (result.success) {
+        await this.logNotification(userId, notification);
+      }
 
-      return { success: true };
+      return result;
     } catch (error) {
       logger.error('Error notifying user:', error);
       return { success: false, error: error.message };
