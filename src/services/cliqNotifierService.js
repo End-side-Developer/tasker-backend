@@ -88,18 +88,19 @@ class CliqNotifierService {
 
       const message = this.formatNotification(notification);
       
-      // Use incoming webhook - it sends to users who have interacted with the bot
-      // Add user targeting info for logging/tracking
+      // Build payload with target_user for the incoming webhook handler
       const payload = {
         ...message,
-        // Include target info for reference
-        _target: {
-          cliq_user_id: mapping.cliq_user_id,
-          tasker_user_id: userId
+        notification_type: notification.type,
+        target_user: {
+          id: mapping.cliq_user_id,
+          tasker_id: userId
         }
       };
 
-      // Use 'bot' (incoming webhook) - this sends to bot conversations
+      logger.info(`Sending ${notification.type} notification to Cliq user ${mapping.cliq_user_id}`);
+
+      // Use 'bot' (incoming webhook) - the handler will DM the target user
       const result = await this.sendToCliq(payload, 'bot');
       
       if (result.success) {
