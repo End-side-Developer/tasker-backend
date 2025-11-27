@@ -21,6 +21,7 @@ const cliqRoutes = require('./routes/cliqRoutes');
 const botRoutes = require('./routes/botRoutes');
 const authRoutes = require('./routes/authRoutes');
 const testRoutes = require('./routes/testRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Initialize Express app
 const app = express();
@@ -92,6 +93,7 @@ app.use('/api/auth', authRoutes); // OAuth routes (no auth required for login/ca
 app.use('/api/tasks', verifyAuth, taskRoutes); // Accepts API key OR JWT token
 app.use('/api/cliq', verifyAuth, cliqRoutes); // Accepts API key OR JWT token
 app.use('/api/cliq/bot', verifyAuth, botRoutes); // TaskerBot endpoints
+app.use('/api/cliq/notifications', verifyAuth, notificationRoutes); // Notification settings
 app.use('/api/test', testRoutes); // Test endpoints (mixed auth)
 
 // Error handling
