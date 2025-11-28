@@ -1098,3 +1098,146 @@ exports.getTaskDetails = async (req, res) => {
     });
   }
 };
+
+/**
+ * Delete Task Command
+ * POST /api/cliq/commands/delete-task
+ */
+exports.deleteTask = async (req, res) => {
+  try {
+    const { taskId, requestedBy, requestedByName, requestedByEmail, reason } = req.body;
+
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing taskId',
+        text: '❌ Please provide task ID'
+      });
+    }
+
+    const taskRef = getDb().collection('tasks').doc(taskId);
+    const taskDoc = await taskRef.get();
+
+    if (!taskDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: '❌ Task not found',
+        text: `❌ Task ${taskId} not found`
+      });
+    }
+
+    const taskData = taskDoc.data();
+    await taskRef.delete();
+
+    logger.info(`Task ${taskId} deleted via Cliq by ${requestedByName || requestedBy}`);
+
+    res.json({
+      success: true,
+      message: '🗑️ Task deleted',
+      text: `🗑️ Task "${taskData.title}" deleted${reason ? ' (' + reason + ')' : ''}`,
+      data: {
+        id: taskId,
+        deletedBy: requestedBy || 'unknown',
+        deletedByEmail: requestedByEmail || 'unknown'
+      }
+    });
+  } catch (error) {
+    logger.error('Error deleting task via Cliq:', error);
+    res.status(500).json({
+      success: false,
+      message: '❌ Failed to delete task',
+      error: error.message,
+      text: '❌ Failed to delete task. Please try again.'
+    });
+  }
+};
+
+/**
+ * Delete Project Command
+ * POST /api/cliq/commands/delete-project
+ */
+exports.deleteProject = async (req, res) => {
+  try {
+    const { projectId, requestedBy, requestedByName, requestedByEmail, confirmCascade = false } = req.body;
+    const cascadeDelete = confirmCascade === true || confirmCascade === 'true';
+
+    if (!projectId || !requestedBy) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing required fields',
+        text: '❌ Project ID and user context required'
+      });
+    }
+
+    const projectRef = getDb().collection('projects').doc(projectId);
+    const projectDoc = await projectRef.get();
+
+    if (!projectDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: '❌ Project not found',
+        text: `❌ Project not found`
+      });
+    }
+
+    const projectData = projectDoc.data();
+
+    // Ensure only owners can delete projects
+    const cliqService = require('../services/cliqService');
+    let firebaseUserId = await cliqService.mapCliqUserToTasker(requestedBy, requestedByEmail);
+    const allowedIds = new Set([requestedBy]);
+    if (firebaseUserId) {
+      allowedIds.add(firebaseUserId);
+    }
+
+    const isOwner = Array.from(allowedIds).some(id => projectData.memberRoles?.[id] === 'owner');
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ Only project owners can delete projects',
+        text: '❌ Only owners can delete this project'
+      });
+    }
+
+    // Delete related tasks if confirmation provided
+    if (cascadeDelete) {
+      const tasksSnapshot = await getDb().collection('tasks').where('projectId', '==', projectId).get();
+      if (!tasksSnapshot.empty) {
+        const batch = getDb().batch();
+        tasksSnapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    }
+
+    // Delete members subcollection
+    const membersSnapshot = await projectRef.collection('members').get();
+    if (!membersSnapshot.empty) {
+      const batch = getDb().batch();
+      membersSnapshot.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    }
+
+    await projectRef.delete();
+
+    logger.info(`Project ${projectId} deleted via Cliq by ${requestedByName || requestedBy}`);
+
+    res.json({
+      success: true,
+      message: '🗑️ Project deleted',
+      text: `🗑️ Project "${projectData.name}" deleted${cascadeDelete ? ' (including linked tasks)' : ''}`,
+      data: {
+        id: projectId,
+        deletedBy: requestedBy,
+        deletedByEmail: requestedByEmail || 'unknown'
+      }
+    });
+  } catch (error) {
+    logger.error('Error deleting project via Cliq:', error);
+    res.status(500).json({
+      success: false,
+      message: '❌ Failed to delete project',
+      error: error.message,
+      text: '❌ Failed to delete project. Please try again.'
+    });
+  }
+};
