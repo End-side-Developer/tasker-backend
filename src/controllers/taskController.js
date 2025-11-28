@@ -12,7 +12,34 @@ class TaskController {
    */
   async createTask(req, res, next) {
     try {
-      const { title, description, projectId, dueDate, cliqContext } = req.body;
+      const {
+        title,
+        description,
+        projectId,
+        dueDate,
+        priority,
+        tags,
+        reminderEnabled,
+        recurrencePattern,
+        recurrenceInterval,
+        recurrenceEndDate,
+        parentRecurringTaskId,
+        assignees,
+        assignedBy,
+        isDescriptionEncrypted,
+        status,
+        cliqContext = {},
+      } = req.body;
+
+      if (!cliqContext.userId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_USER_CONTEXT',
+            message: 'Cliq user context is required to create tasks.',
+          },
+        });
+      }
 
       // Map Cliq user to Tasker user
       let taskerUserId = await cliqService.mapCliqUserToTasker(cliqContext.userId);
@@ -29,13 +56,27 @@ class TaskController {
       }
 
       // Create task
+      const resolvedAssignees = Array.isArray(assignees) && assignees.length > 0
+        ? assignees
+        : [taskerUserId];
+
       const task = await taskService.createTask({
         title,
         description,
         projectId,
         dueDate,
+        priority,
+        tags,
+        reminderEnabled,
+        recurrencePattern,
+        recurrenceInterval,
+        recurrenceEndDate,
+        parentRecurringTaskId,
+        assignees: resolvedAssignees,
+        assignedBy: assignedBy ?? taskerUserId,
+        isDescriptionEncrypted,
+        status,
         createdBy: taskerUserId,
-        assignees: [taskerUserId]
       });
 
       // Store Cliq mapping

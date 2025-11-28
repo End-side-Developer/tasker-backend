@@ -1,10 +1,22 @@
 const { admin } = require('../config/firebase');
+const taskService = require('../services/taskService');
 const { validateTaskData, validateProjectData } = require('../utils/validators');
 const { formatTaskCard, formatProjectCard, formatListCard } = require('../utils/cardFormatter');
 const logger = require('../config/logger');
 
 // Get Firestore instance (lazy initialization)
 const getDb = () => admin.firestore();
+
+const normalizeStatusFilter = (status) => {
+  if (!status) return undefined;
+  const lower = status.toString().toLowerCase();
+  if (lower === 'pending') return 'pending';
+  if (lower === 'completed') return 'completed';
+  if (lower === 'in_progress' || lower === 'in-progress' || lower === 'inprogress') {
+    return 'inProgress';
+  }
+  return status;
+};
 
 /**
  * Create Task Command
@@ -20,6 +32,13 @@ exports.createTask = async (req, res) => {
       tags = [],
       dueDate,
       assignedTo,
+      reminderEnabled = true,
+      recurrencePattern = 'none',
+      recurrenceInterval = 1,
+      recurrenceEndDate,
+      parentRecurringTaskId,
+      isDescriptionEncrypted = false,
+      status,
       cliqContext
     } = req.body;
 
@@ -52,59 +71,38 @@ exports.createTask = async (req, res) => {
     // Use Firebase user ID if found, otherwise fall back to Cliq user ID
     const actualUserId = firebaseUserId || cliqContext.userId;
 
-    // Create task document
-    const taskRef = getDb().collection('tasks').doc();
-    const taskId = taskRef.id;
+    const assignees = assignedTo ? [assignedTo] : [actualUserId];
 
-    const taskData = {
-      projectId: projectId || null,
+    const task = await taskService.createTask({
       title,
-      description: description || null,
-      isDescriptionEncrypted: false,
-      dueDate: dueDate ? admin.firestore.Timestamp.fromDate(new Date(dueDate)) : null,
-      status: 'pending',
-      reminderEnabled: false,
-      assignees: assignedTo ? [assignedTo] : [],
-      assignedBy: assignedTo ? actualUserId : null,
-      assignedAt: assignedTo ? admin.firestore.FieldValue.serverTimestamp() : null,
-      recurrencePattern: 'none',
-      recurrenceInterval: 1,
-      recurrenceEndDate: null,
-      parentRecurringTaskId: null,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: null,
-      // Store Cliq context in metadata subcollection or separate mapping collection
-      // Don't pollute main document with Cliq-specific fields
-    };
+      description,
+      projectId,
+      dueDate,
+      priority,
+      tags,
+      reminderEnabled,
+      recurrencePattern,
+      recurrenceInterval,
+      recurrenceEndDate,
+      parentRecurringTaskId,
+      assignees,
+      assignedBy: actualUserId,
+      isDescriptionEncrypted,
+      status,
+      createdBy: actualUserId,
+    });
 
-    await taskRef.set(taskData);
+    logger.info(`Task created via Cliq: ${task.id} by ${cliqContext.userName} (Firebase ID: ${actualUserId})`);
 
-    logger.info(`Task created via Cliq: ${taskId} by ${cliqContext.userName} (Firebase ID: ${actualUserId})`);
-
-    // Store Cliq mapping separately if needed
-    // await getDb().collection('cliq_mappings').doc(taskId).set({
-    //   taskId,
-    //   cliqUserId: cliqContext.userId,
-    //   cliqUserName: cliqContext.userName,
-    //   cliqUserEmail: cliqContext.userEmail,
-    //   channelId: cliqContext.channelId || null,
-    //   messageId: cliqContext.messageId || null,
-    //   createdAt: admin.firestore.FieldValue.serverTimestamp()
-    // });
-
-    // Format response with rich card
-    const card = formatTaskCard({
-      id: taskId,
-      ...taskData
-    }, 'created');
+    const card = formatTaskCard(task, 'created');
 
     res.status(201).json({
       success: true,
       message: `✅ Task created successfully! 🎉`,
       data: {
-        id: taskId,
+        id: task.id,
         title,
-        status: 'pending',
+        status: task.status,
         createdAt: new Date().toISOString()
       },
       card,
@@ -138,10 +136,11 @@ exports.listTasks = async (req, res) => {
     } = req.query;
 
     let query = getDb().collection('tasks');
+    const normalizedStatus = normalizeStatusFilter(status);
 
     // Apply filters
-    if (status) {
-      query = query.where('status', '==', status);
+    if (normalizedStatus) {
+      query = query.where('status', '==', normalizedStatus);
     }
     if (priority) {
       // Priority is stored as enum string: low, medium, high, urgent
@@ -178,20 +177,20 @@ exports.listTasks = async (req, res) => {
     // Build text response
     let filterInfo = '';
     if (priority) filterInfo += `Priority: ${priority} `;
-    if (status) filterInfo += `Status: ${status} `;
+    if (normalizedStatus) filterInfo += `Status: ${normalizedStatus} `;
     
     let textResponse = `📋 **Tasks${filterInfo ? ' (' + filterInfo.trim() + ')' : ''} - ${tasks.length} found**\n\n`;
     
     if (tasks.length === 0) {
       textResponse = priority 
         ? `📋 No ${priority} priority tasks found.`
-        : status === 'pending' 
+        : normalizedStatus === 'pending' 
           ? '✅ Great! You have no pending tasks.' 
           : '📋 No tasks found matching your criteria.';
     } else {
       const displayTasks = tasks.slice(0, 10);
       displayTasks.forEach((task, index) => {
-        const statusEmoji = task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '📌';
+        const statusEmoji = task.status === 'completed' ? '✅' : task.status === 'inProgress' ? '🔄' : '📌';
         const priorityEmoji = getPriorityEmoji(task.priority);
         textResponse += `${index + 1}. ${statusEmoji} ${priorityEmoji} ${task.title}\n`;
         if (task.dueDate) {
@@ -1034,7 +1033,7 @@ exports.getTaskDetails = async (req, res) => {
       textResponse += `**Description:** ${taskData.description}\n\n`;
     }
     
-    const statusEmoji = taskData.status === 'completed' ? '✅' : taskData.status === 'in_progress' ? '🔄' : '📌';
+    const statusEmoji = taskData.status === 'completed' ? '✅' : taskData.status === 'inProgress' ? '🔄' : '📌';
     textResponse += `**Status:** ${statusEmoji} ${taskData.status}\n\n`;
     
     if (taskData.projectId) {
