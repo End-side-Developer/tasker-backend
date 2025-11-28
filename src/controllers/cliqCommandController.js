@@ -377,17 +377,10 @@ exports.searchTasks = async (req, res) => {
       });
     }
 
-    // Search in title and description
+    // Search in title and description - fetch all tasks first
+    // (Same approach as listTasks - no user filtering since tasks may not have assignees)
     const tasksRef = getDb().collection('tasks');
-    let queryRef = tasksRef;
-
-    // Note: No createdBy field in schema
-    // If userId provided, filter by assignees instead
-    if (userId) {
-      queryRef = queryRef.where('assignees', 'array-contains', userId);
-    }
-
-    const snapshot = await queryRef.get();
+    const snapshot = await tasksRef.orderBy('createdAt', 'desc').limit(100).get();
     
     const tasks = [];
     const searchLower = searchQuery.toLowerCase();
@@ -396,7 +389,6 @@ exports.searchTasks = async (req, res) => {
       const data = doc.data();
       const titleMatch = data.title?.toLowerCase().includes(searchLower);
       const descMatch = data.description?.toLowerCase().includes(searchLower);
-      // Note: tags field doesn't exist in schema, removed
 
       if (titleMatch || descMatch) {
         tasks.push({
