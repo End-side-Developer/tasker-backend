@@ -216,12 +216,17 @@ class CliqNotifierService {
   formatTaskAssigned(notification) {
     const { task, assignedBy } = notification;
     const priorityIcon = this.getPriorityIcon(task.priority);
+    
+    // Handle encrypted descriptions
+    const displayDescription = task.isDescriptionEncrypted 
+      ? '🔒 Encrypted - view in Tasker app'
+      : (task.description || 'No description');
 
     return {
       text: `📋 New task assigned to you!`,
       card: { title: `${priorityIcon} ${task.title}`, theme: 'modern-inline' },
       slides: [
-        { type: 'text', title: 'Description', data: task.description || 'No description' },
+        { type: 'text', title: 'Description', data: displayDescription },
         { type: 'label', title: 'Details', data: [
           { 'Priority': this.getPriorityText(task.priority) },
           { 'Due': this.formatDate(task.dueDate) }

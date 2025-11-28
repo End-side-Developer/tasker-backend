@@ -133,15 +133,20 @@ exports.handleContext = async (req, res) => {
     switch (action) {
       case 'view_task':
         const task = await taskService.getTaskById(taskId);
+        // Handle encrypted descriptions - show placeholder instead
+        const displayDescription = task.isDescriptionEncrypted 
+          ? '🔒 Encrypted content - open in Tasker app to view'
+          : task.description;
         response = {
           success: true,
           task: {
             id: task.id,
             title: task.title,
-            description: task.description,
+            description: displayDescription,
             status: task.status,
             priority: task.priority || 'medium',
             dueDate: task.dueDate ? nlpService.formatDate(task.dueDate) : null,
+            isEncrypted: task.isDescriptionEncrypted || false,
           },
         };
         break;

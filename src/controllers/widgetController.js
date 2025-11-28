@@ -431,10 +431,15 @@ exports.getTaskDetails = async (req, res) => {
     }
 
     // Format task for response
+    // Handle encrypted descriptions
+    const displayDescription = task.isDescriptionEncrypted 
+      ? '🔒 Encrypted - view in app'
+      : (task.description || null);
+    
     const formattedTask = {
       id: task.id,
       title: task.title,
-      description: task.description || null,
+      description: displayDescription,
       priority: task.priority || 'medium',
       status: task.status || 'pending',
       dueDate: formatDueDate(task.dueDate),
@@ -443,6 +448,7 @@ exports.getTaskDetails = async (req, res) => {
       projectId: task.projectId || null,
       projectName: projectName,
       createdAt: task.createdAt ? formatDueDate(task.createdAt) : null,
+      isEncrypted: task.isDescriptionEncrypted || false,
     };
 
     logger.info('Task details loaded from widget', { userId, taskId });

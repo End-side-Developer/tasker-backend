@@ -1029,7 +1029,10 @@ exports.getTaskDetails = async (req, res) => {
     let textResponse = `📋 **Task Details**\n\n`;
     textResponse += `**Title:** ${taskData.title}\n\n`;
     
-    if (taskData.description) {
+    // Handle encrypted descriptions
+    if (taskData.isDescriptionEncrypted) {
+      textResponse += `**Description:** 🔒 _Encrypted content - open in Tasker app to view_\n\n`;
+    } else if (taskData.description) {
       textResponse += `**Description:** ${taskData.description}\n\n`;
     }
     
