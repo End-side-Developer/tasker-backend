@@ -191,6 +191,7 @@ class CliqNotifierService {
       task_due_soon: this.formatTaskDueSoon.bind(this),
       task_overdue: this.formatTaskOverdue.bind(this),
       task_created: this.formatTaskCreated.bind(this),
+      task_created_in_project: this.formatTaskCreatedInProject.bind(this),
       task_updated: this.formatTaskUpdated.bind(this),
       task_deleted: this.formatTaskDeleted.bind(this),
       comment_added: this.formatCommentAdded.bind(this),
@@ -273,6 +274,24 @@ class CliqNotifierService {
       text: `📋 New task created in project`,
       card: { title: `${this.getPriorityIcon(task.priority)} ${task.title}`, theme: 'modern-inline' },
       slides: [{ type: 'text', data: `Created by ${createdBy || 'a team member'}` }]
+    };
+  }
+
+  formatTaskCreatedInProject(notification) {
+    const { task, createdBy, projectName } = notification;
+    const priorityIcon = this.getPriorityIcon(task.priority);
+    
+    return {
+      text: `📁 New task in "${projectName || 'your project'}"`,
+      card: { title: `${priorityIcon} ${task.title}`, theme: 'modern-inline' },
+      slides: [
+        { type: 'text', title: 'Project Activity', data: `${createdBy || 'A team member'} created a new task in a project you're a member of.` },
+        { type: 'label', title: 'Details', data: [
+          { 'Priority': this.getPriorityText(task.priority) },
+          { 'Due': this.formatDate(task.dueDate) },
+          { 'Project': projectName || 'Shared Project' }
+        ]}
+      ]
     };
   }
 

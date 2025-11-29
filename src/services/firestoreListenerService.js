@@ -132,7 +132,23 @@ class FirestoreListenerService {
 
     const creatorName = await cliqNotifier.getUserName(task.createdBy);
 
-    // Notify assignees (except creator)
+    // Get project members if task is in a project
+    let projectMembers = [];
+    let projectName = null;
+    if (task.projectId) {
+      try {
+        const projectDoc = await this.db.collection('projects').doc(task.projectId).get();
+        if (projectDoc.exists) {
+          const projectData = projectDoc.data();
+          projectMembers = projectData.members || [];
+          projectName = projectData.name || projectData.title || 'a shared project';
+        }
+      } catch (err) {
+        logger.warn(`Could not fetch project ${task.projectId}:`, err.message);
+      }
+    }
+
+    // Notify explicitly assigned users (task_assigned)
     if (task.assignees?.length > 0) {
       for (const assigneeId of task.assignees) {
         if (assigneeId === task.createdBy) continue;
@@ -141,6 +157,24 @@ class FirestoreListenerService {
           type: 'task_assigned',
           task: { id: taskId, ...task },
           assignedBy: creatorName
+        });
+      }
+    }
+
+    // Notify project members who are NOT assignees (task_created_in_project)
+    if (task.projectId && projectMembers.length > 0) {
+      const assigneeSet = new Set(task.assignees || []);
+      
+      for (const memberId of projectMembers) {
+        // Skip creator and assignees (they already got notified)
+        if (memberId === task.createdBy) continue;
+        if (assigneeSet.has(memberId)) continue;
+
+        await cliqNotifier.notifyUser(memberId, {
+          type: 'task_created_in_project',
+          task: { id: taskId, ...task },
+          createdBy: creatorName,
+          projectName: projectName
         });
       }
     }
