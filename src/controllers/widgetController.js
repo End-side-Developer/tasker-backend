@@ -67,9 +67,9 @@ exports.getDashboard = async (req, res) => {
       // Get most overdue high priority task
       focusTask = overdueTasks
         .sort((a, b) => {
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          const aPriority = priorityOrder[a.priority] ?? 2;
-          const bPriority = priorityOrder[b.priority] ?? 2;
+          const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+          const aPriority = priorityOrder[a.priority] ?? 3;
+          const bPriority = priorityOrder[b.priority] ?? 3;
           if (aPriority !== bPriority) return aPriority - bPriority;
           
           // Then by due date (oldest first)
@@ -80,8 +80,8 @@ exports.getDashboard = async (req, res) => {
     } else if (todaysTasks.length > 0) {
       focusTask = todaysTasks
         .sort((a, b) => {
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          return (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
+          const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+          return (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
         })[0];
     }
 
