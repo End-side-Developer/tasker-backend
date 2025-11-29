@@ -4,6 +4,8 @@
  */
 
 const logger = require('../config/logger');
+const chrono = require('chrono-node');
+const Fuse = require('fuse.js');
 
 class NLPService {
   constructor() {
@@ -110,6 +112,9 @@ class NLPService {
     }
 
     const cleanMessage = message.trim();
+    
+    // Extract entities first (dates, priorities)
+    const entities = this.extractEntities(cleanMessage);
 
     // Check each pattern category
     for (const [action, patterns] of Object.entries(this.patterns)) {
@@ -117,12 +122,23 @@ class NLPService {
         const match = cleanMessage.match(pattern);
         if (match) {
           const params = this.extractParams(action, match, cleanMessage);
-          logger.debug(`NLP matched: ${action}`, { message: cleanMessage, match: match[0] });
+          
+          // Merge extracted entities with regex params
+          const finalParams = { ...params, ...entities };
+          
+          // Clean up task title if date was extracted from it
+          if (finalParams.taskTitle && entities.dateText) {
+            finalParams.taskTitle = finalParams.taskTitle.replace(entities.dateText, '').trim();
+            // Remove trailing prepositions like "on", "at", "by"
+            finalParams.taskTitle = finalParams.taskTitle.replace(/\s+(on|at|by|due)\s*$/i, '');
+          }
+
+          logger.debug(`NLP matched: ${action}`, { message: cleanMessage, params: finalParams });
           return {
             action,
             confidence: 0.8,
             match: match[0],
-            params,
+            params: finalParams,
             originalMessage: cleanMessage,
           };
         }
@@ -137,6 +153,31 @@ class NLPService {
       params: {},
       originalMessage: cleanMessage,
     };
+  }
+
+  /**
+   * Extract entities (dates, priorities) from message
+   */
+  extractEntities(message) {
+    const entities = {};
+
+    // 1. Extract Date/Time using chrono-node
+    const parsedDate = chrono.parse(message, new Date(), { forwardDate: true });
+    if (parsedDate.length > 0) {
+      const dateResult = parsedDate[0];
+      entities.dueDate = dateResult.start.date();
+      entities.dateText = dateResult.text; // The text that matched the date
+      entities.hasTime = dateResult.start.isCertain('hour');
+    }
+
+    // 2. Extract Priority
+    if (/\b(urgent|asap|high priority|important)\b/i.test(message)) {
+      entities.priority = 'high';
+    } else if (/\b(low priority|whenever)\b/i.test(message)) {
+      entities.priority = 'low';
+    }
+
+    return entities;
   }
 
   /**
@@ -192,8 +233,8 @@ class NLPService {
         `• "Finished [task name]"\n\n` +
         `📝 **Create Tasks**\n` +
         `• "Create a task [title]"\n` +
-        `• "Remind me to [action]"\n` +
-        `• "I need to [action]"\n\n` +
+        `• "Remind me to [action] tomorrow at 5pm"\n` +
+        `• "I need to [action] urgent"\n\n` +
         `📊 **Other**\n` +
         `• "Good morning" - Daily briefing\n` +
         `• "My stats" - View productivity\n` +
@@ -464,33 +505,33 @@ class NLPService {
   }
 
   /**
-   * Find best matching task by name
+   * Find best matching task by name using Fuzzy Search
    */
   findMatchingTask(tasks, searchName) {
     if (!searchName || !tasks || tasks.length === 0) return null;
 
     const search = searchName.toLowerCase().trim();
 
-    // Exact match
+    // 1. Exact match (fastest)
     let match = tasks.find(t => t.title.toLowerCase() === search);
     if (match) return match;
 
-    // Starts with match
-    match = tasks.find(t => t.title.toLowerCase().startsWith(search));
-    if (match) return match;
+    // 2. Fuzzy match using Fuse.js
+    const options = {
+      keys: ['title'],
+      threshold: 0.4, // 0.0 is perfect match, 1.0 is match anything
+      includeScore: true
+    };
 
-    // Contains match
-    match = tasks.find(t => t.title.toLowerCase().includes(search));
-    if (match) return match;
+    const fuse = new Fuse(tasks, options);
+    const result = fuse.search(search);
 
-    // Fuzzy match - check if all words are present
-    const searchWords = search.split(/\s+/);
-    match = tasks.find(t => {
-      const titleLower = t.title.toLowerCase();
-      return searchWords.every(word => titleLower.includes(word));
-    });
+    if (result.length > 0) {
+      logger.debug(`Fuzzy match found: "${search}" -> "${result[0].item.title}" (score: ${result[0].score})`);
+      return result[0].item;
+    }
 
-    return match;
+    return null;
   }
 }
 

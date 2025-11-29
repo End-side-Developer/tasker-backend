@@ -396,6 +396,16 @@ async function handleListTasks(taskerId, params = {}) {
           filters.dueBefore = endOfWeek;
           break;
       }
+    } else if (params.dueDate) {
+      // Handle specific date from NLP entity extraction
+      const targetDate = new Date(params.dueDate);
+      targetDate.setHours(0, 0, 0, 0);
+      
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(targetDate.getDate() + 1);
+      
+      filters.dueAfter = targetDate;
+      filters.dueBefore = nextDay;
     }
 
     const tasks = await taskService.listTasks(filters);
@@ -525,14 +535,27 @@ async function handleCreateTask(taskerId, params, userName) {
       title: params.taskTitle,
       createdBy: taskerId,
       assignees: [taskerId],
+      dueDate: params.dueDate || null,
+      priority: params.priority || 'medium',
     });
 
+    let responseText = `✅ **Task created!**\n\n📋 "${params.taskTitle}"`;
+    
+    if (params.dueDate) {
+      responseText += `\n📅 Due: ${nlpService.formatDate(params.dueDate)}`;
+    }
+    
+    if (params.priority && params.priority !== 'medium') {
+      responseText += `\n🔥 Priority: ${params.priority}`;
+    }
+
+    responseText += `\n\nWould you like to add more details?`;
+
     return {
-      text: `✅ **Task created!**\n\n📋 "${params.taskTitle}"\n\n` +
-        `Would you like to add more details?`,
+      text: responseText,
       buttons: [
         {
-          label: '📅 Set Due Date',
+          label: '📅 Edit Details',
           type: '+',
           action: {
             type: 'invoke.function',
