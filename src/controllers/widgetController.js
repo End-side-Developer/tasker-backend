@@ -129,7 +129,7 @@ exports.getDashboard = async (req, res) => {
  */
 exports.getTasks = async (req, res) => {
   try {
-    const { userId, userEmail, filter, limit = 20 } = req.query;
+    const { userId, userEmail, filter, limit = 100, personal, projectId } = req.query;
 
     if (!userId) {
       return res.status(400).json({ success: false, error: 'userId is required' });
@@ -147,6 +147,13 @@ exports.getTasks = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    // Filter by personal (no projectId) or specific project
+    if (personal === 'true') {
+      tasks = tasks.filter(t => !t.projectId || t.projectId === 'personal');
+    } else if (projectId && projectId !== '') {
+      tasks = tasks.filter(t => t.projectId === projectId);
+    }
 
     // Apply filter
     switch (filter) {
