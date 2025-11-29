@@ -10,6 +10,12 @@ const cliqController = require('../controllers/cliqController');
 router.post('/bot/generate-link-code', cliqController.generateLinkCode);
 router.post('/bot/unlink', cliqController.unlinkAccount);
 
+// Challenge verification (called from Flutter app)
+router.post('/verify-challenge', cliqController.verifyChallenge);
+
+// Link code status (called from Cliq to check verification status)
+router.get('/link-code-status/:code', cliqController.getLinkCodeStatus);
+
 // Link with code (called from Cliq slash command)
 router.post('/link-with-code', cliqController.linkWithCode);
 
