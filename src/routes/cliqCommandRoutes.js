@@ -15,7 +15,9 @@ const {
   getProjectMembers,
   getTaskDetails,
   checkUser,
-  deleteProject
+  deleteProject,
+  getDailyReminders,
+  getWeeklyDigest
 } = require('../controllers/cliqCommandController');
 
 /**
@@ -40,5 +42,9 @@ router.post('/delete-project', verifyAuth, deleteProject);
 router.get('/project-details', verifyAuth, getProjectDetails);
 router.get('/project-members', verifyAuth, getProjectMembers);
 router.get('/check-user', verifyAuth, checkUser);
+
+// Scheduler Endpoints (called from Zoho Cliq Schedulers)
+router.get('/scheduler/daily-reminders', verifyAuth, getDailyReminders);
+router.get('/scheduler/weekly-digest', verifyAuth, getWeeklyDigest);
 
 module.exports = router;

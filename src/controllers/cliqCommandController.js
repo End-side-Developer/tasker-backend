@@ -1243,3 +1243,248 @@ exports.deleteProject = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get Daily Reminders Data for Scheduler
+ * GET /api/cliq/scheduler/daily-reminders
+ * Returns all linked users with their pending/overdue tasks
+ */
+exports.getDailyReminders = async (req, res) => {
+  try {
+    // Get all linked Cliq users
+    const mappingsSnapshot = await getDb().collection('cliq_user_mappings').get();
+    
+    if (mappingsSnapshot.empty) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No linked users found'
+      });
+    }
+
+    const usersData = [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    for (const mappingDoc of mappingsSnapshot.docs) {
+      const mapping = mappingDoc.data();
+      const cliqUserId = mapping.cliq_user_id;
+      const taskerUserId = mapping.tasker_user_id;
+      const userName = mapping.cliq_user_name || 'there';
+
+      // Check notification settings - skip if reminders disabled
+      const settingsDoc = await getDb().collection('cliq_notification_settings').doc(cliqUserId).get();
+      if (settingsDoc.exists) {
+        const settings = settingsDoc.data();
+        if (settings.enabled === false || settings.task_due_soon === false) {
+          continue;
+        }
+        // Check DND
+        if (settings.doNotDisturb?.enabled) {
+          const dndUntil = settings.doNotDisturb.until?.toDate?.() || new Date(settings.doNotDisturb.until);
+          if (dndUntil > now) {
+            continue;
+          }
+        }
+      }
+
+      // Get pending tasks for this user
+      const tasksSnapshot = await getDb().collection('tasks')
+        .where('assignees', 'array-contains', taskerUserId)
+        .where('status', '!=', 'completed')
+        .limit(20)
+        .get();
+
+      if (tasksSnapshot.empty) {
+        continue;
+      }
+
+      let pendingCount = 0;
+      let overdueCount = 0;
+      let dueTodayCount = 0;
+      const topTasks = [];
+
+      tasksSnapshot.forEach(doc => {
+        const task = doc.data();
+        pendingCount++;
+
+        // Check due date
+        if (task.dueDate) {
+          const dueDate = task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+          
+          if (dueDate < todayStart) {
+            overdueCount++;
+          } else if (dueDate >= todayStart && dueDate < todayEnd) {
+            dueTodayCount++;
+          }
+        }
+
+        // Add to top tasks (prioritize high priority and overdue)
+        if (topTasks.length < 5) {
+          topTasks.push({
+            id: doc.id,
+            title: task.title,
+            priority: task.priority || 'medium',
+            dueDate: task.dueDate ? (task.dueDate.toDate ? task.dueDate.toDate().toLocaleDateString() : new Date(task.dueDate).toLocaleDateString()) : null
+          });
+        }
+      });
+
+      // Sort topTasks by priority
+      topTasks.sort((a, b) => {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
+      });
+
+      usersData.push({
+        cliqUserId,
+        taskerUserId,
+        userName,
+        pendingCount,
+        overdueCount,
+        dueTodayCount,
+        topTasks: topTasks.slice(0, 5)
+      });
+    }
+
+    logger.info(`Daily reminders prepared for ${usersData.length} users`);
+
+    res.json({
+      success: true,
+      data: usersData,
+      count: usersData.length
+    });
+
+  } catch (error) {
+    logger.error('Error preparing daily reminders:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get Weekly Digest Data for Scheduler
+ * GET /api/cliq/scheduler/weekly-digest
+ * Returns all linked users with their weekly stats
+ */
+exports.getWeeklyDigest = async (req, res) => {
+  try {
+    // Get all linked Cliq users
+    const mappingsSnapshot = await getDb().collection('cliq_user_mappings').get();
+    
+    if (mappingsSnapshot.empty) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No linked users found'
+      });
+    }
+
+    const usersData = [];
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    for (const mappingDoc of mappingsSnapshot.docs) {
+      const mapping = mappingDoc.data();
+      const cliqUserId = mapping.cliq_user_id;
+      const taskerUserId = mapping.tasker_user_id;
+      const userName = mapping.cliq_user_name || 'there';
+
+      // Check notification settings
+      const settingsDoc = await getDb().collection('cliq_notification_settings').doc(cliqUserId).get();
+      if (settingsDoc.exists) {
+        const settings = settingsDoc.data();
+        if (settings.enabled === false) {
+          continue;
+        }
+      }
+
+      // Get all tasks for this user
+      const allTasksSnapshot = await getDb().collection('tasks')
+        .where('assignees', 'array-contains', taskerUserId)
+        .get();
+
+      let completedThisWeek = 0;
+      let createdThisWeek = 0;
+      let pendingTotal = 0;
+      let overdueTotal = 0;
+
+      allTasksSnapshot.forEach(doc => {
+        const task = doc.data();
+        
+        // Check if completed this week
+        if (task.status === 'completed' && task.completedAt) {
+          const completedDate = task.completedAt.toDate ? task.completedAt.toDate() : new Date(task.completedAt);
+          if (completedDate >= weekAgo) {
+            completedThisWeek++;
+          }
+        } else if (task.status !== 'completed') {
+          pendingTotal++;
+          
+          // Check if overdue
+          if (task.dueDate) {
+            const dueDate = task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+            if (dueDate < now) {
+              overdueTotal++;
+            }
+          }
+        }
+
+        // Check if created this week
+        if (task.createdAt) {
+          const createdDate = task.createdAt.toDate ? task.createdAt.toDate() : new Date(task.createdAt);
+          if (createdDate >= weekAgo) {
+            createdThisWeek++;
+          }
+        }
+      });
+
+      // Calculate productivity score (simple formula)
+      const totalTasks = completedThisWeek + pendingTotal;
+      const productivityScore = totalTasks > 0 ? Math.round((completedThisWeek / totalTasks) * 100) : 0;
+
+      // Get streak from user data (if available)
+      let streak = 0;
+      try {
+        const userDoc = await getDb().collection('users').doc(taskerUserId).get();
+        if (userDoc.exists) {
+          streak = userDoc.data().streak?.current || 0;
+        }
+      } catch (e) {
+        // Streak not available
+      }
+
+      usersData.push({
+        cliqUserId,
+        taskerUserId,
+        userName,
+        stats: {
+          completedThisWeek,
+          createdThisWeek,
+          pendingTotal,
+          overdueTotal,
+          streak,
+          productivityScore
+        }
+      });
+    }
+
+    logger.info(`Weekly digest prepared for ${usersData.length} users`);
+
+    res.json({
+      success: true,
+      data: usersData,
+      count: usersData.length
+    });
+
+  } catch (error) {
+    logger.error('Error preparing weekly digest:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
