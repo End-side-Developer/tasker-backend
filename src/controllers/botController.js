@@ -315,9 +315,22 @@ exports.getUserProjects = async (req, res) => {
  */
 exports.updateTask = async (req, res) => {
   try {
-    const { taskId, userId, userEmail, dueDate, priority, description } = req.body;
+    const { 
+      taskId, 
+      userId, 
+      userEmail, 
+      dueDate, 
+      priority, 
+      description,
+      tags,
+      reminderEnabled,
+      recurrencePattern,
+      recurrenceInterval,
+      recurrenceEndDate,
+      isDescriptionEncrypted
+    } = req.body;
 
-    logger.info('Update task request', { taskId, userId, dueDate, priority });
+    logger.info('Update task request', { taskId, userId, body: req.body });
 
     if (!taskId) {
       return res.json({ success: false, error: 'Task ID is required' });
@@ -342,8 +355,35 @@ exports.updateTask = async (req, res) => {
       updates.priority = priority.toLowerCase();
     }
     
-    if (description) {
+    if (description !== undefined) {
       updates.description = description;
+    }
+
+    if (tags !== undefined) {
+      updates.tags = Array.isArray(tags) ? tags : [];
+    }
+
+    if (reminderEnabled !== undefined) {
+      updates.reminderEnabled = reminderEnabled === true || reminderEnabled === 'true';
+    }
+
+    if (recurrencePattern) {
+      updates.recurrencePattern = recurrencePattern.toLowerCase();
+    }
+
+    if (recurrenceInterval !== undefined) {
+      const interval = parseInt(recurrenceInterval, 10);
+      if (!isNaN(interval) && interval > 0) {
+        updates.recurrenceInterval = interval;
+      }
+    }
+
+    if (recurrenceEndDate) {
+      updates.recurrenceEndDate = new Date(recurrenceEndDate).toISOString();
+    }
+
+    if (isDescriptionEncrypted !== undefined) {
+      updates.isDescriptionEncrypted = isDescriptionEncrypted === true || isDescriptionEncrypted === 'true';
     }
 
     // Check if any updates
@@ -364,7 +404,7 @@ exports.updateTask = async (req, res) => {
 
   } catch (error) {
     logger.error('Update task error:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.json({ success: false, error: error.message });
   }
 };
 
