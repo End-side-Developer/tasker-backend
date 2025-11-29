@@ -143,19 +143,24 @@ exports.getTasks = async (req, res) => {
       });
     }
 
-    let tasks = await taskService.listTasks({ assignee: taskerId });
+    let tasks;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-    // Filter by personal (no projectId) or specific project
-    if (personal === 'true') {
-      tasks = tasks.filter(t => !t.projectId || t.projectId === 'personal');
+    // Fetch tasks based on context
+    if (projectId && projectId !== '') {
+      // For project tasks, query directly by projectId (all tasks in the project)
+      tasks = await taskService.listTasks({ projectId, limit: 200 });
+      logger.info('Fetched project tasks', { projectId, count: tasks.length });
+    } else if (personal === 'true') {
+      // For personal tasks, get user's assigned tasks and filter out project tasks
+      tasks = await taskService.listTasks({ assignee: taskerId, limit: 200 });
+      tasks = tasks.filter(t => !t.projectId || t.projectId === '' || t.projectId === 'personal');
       logger.info('Filtering personal tasks', { count: tasks.length });
-    } else if (projectId && projectId !== '') {
-      const beforeCount = tasks.length;
-      tasks = tasks.filter(t => t.projectId === projectId);
-      logger.info('Filtering by projectId', { projectId, beforeCount, afterCount: tasks.length });
+    } else {
+      // Default: get user's assigned tasks
+      tasks = await taskService.listTasks({ assignee: taskerId });
     }
 
     // Apply filter
