@@ -589,19 +589,11 @@ async function handleCreateTask(taskerId, params, userName) {
       responseText += `\n🔥 Priority: ${params.priority}`;
     }
 
-    responseText += `\n\nWould you like to add more details?`;
+    responseText += `\n\n💡 To edit this task, use:\n\`/tasker edit ${newTask.id}\``;
 
     return {
       text: responseText,
       buttons: [
-        {
-          label: '📅 Edit Details',
-          type: '+',
-          action: {
-            type: 'invoke.function',
-            data: { name: 'editTaskForm', taskId: newTask.id },
-          },
-        },
         {
           label: '📋 View Tasks',
           type: '+',
