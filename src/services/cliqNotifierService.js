@@ -429,11 +429,11 @@ class CliqNotifierService {
   }
 
   getPriorityIcon(priority) {
-    return { high: '🔴', medium: '🟡', low: '🟢' }[priority] || '📋';
+    return { urgent: '🔴', high: '🟠', medium: '🟡', low: '🟢' }[priority] || '📋';
   }
 
   getPriorityText(priority) {
-    return { high: '🔴 High', medium: '🟡 Medium', low: '🟢 Low' }[priority] || 'Normal';
+    return { urgent: '🔴 Urgent', high: '🟠 High', medium: '🟡 Medium', low: '🟢 Low' }[priority] || 'Normal';
   }
 
   formatDate(timestamp) {

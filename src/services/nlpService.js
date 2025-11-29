@@ -288,9 +288,10 @@ class NLPService {
     }
 
     const priorityEmoji = {
-      high: '🔥',
-      medium: '📋',
-      low: '📝',
+      urgent: '🔴',
+      high: '🟠',
+      medium: '🟡',
+      low: '🟢',
     };
 
     const statusEmoji = {
