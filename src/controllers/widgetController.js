@@ -424,7 +424,7 @@ exports.getTaskDetails = async (req, res) => {
     }
 
     // Get task
-    const task = await taskService.getTask(taskId);
+    const task = await taskService.getTaskById(taskId);
     if (!task) {
       return res.status(404).json({ success: false, error: 'Task not found' });
     }
