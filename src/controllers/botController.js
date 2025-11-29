@@ -419,53 +419,103 @@ exports.updateTask = async (req, res) => {
  */
 async function handleListTasks(taskerId, params = {}) {
   try {
-    const filters = { assignee: taskerId };
-
-    // Apply time filter if specified
+    const { admin } = require('../config/firebase');
+    const db = admin.firestore();
+    
+    // Build time filters
+    let timeFilters = {};
     if (params.timeFilter) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       switch (params.timeFilter) {
         case 'today':
-          filters.dueBefore = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+          timeFilters.dueBefore = new Date(today.getTime() + 24 * 60 * 60 * 1000);
           break;
         case 'tomorrow':
-          filters.dueAfter = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-          filters.dueBefore = new Date(today.getTime() + 48 * 60 * 60 * 1000);
+          timeFilters.dueAfter = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+          timeFilters.dueBefore = new Date(today.getTime() + 48 * 60 * 60 * 1000);
           break;
         case 'this week':
           const endOfWeek = new Date(today);
           endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
-          filters.dueBefore = endOfWeek;
+          timeFilters.dueBefore = endOfWeek;
           break;
       }
     } else if (params.dueDate) {
-      // Handle specific date from NLP entity extraction
       const targetDate = new Date(params.dueDate);
       targetDate.setHours(0, 0, 0, 0);
       
       const nextDay = new Date(targetDate);
       nextDay.setDate(targetDate.getDate() + 1);
       
-      filters.dueAfter = targetDate;
-      filters.dueBefore = nextDay;
+      timeFilters.dueAfter = targetDate;
+      timeFilters.dueBefore = nextDay;
     }
 
-    const tasks = await taskService.listTasks(filters);
+    // 1. Get tasks directly assigned to the user
+    const assignedTasks = await taskService.listTasks({ assignee: taskerId, ...timeFilters });
+
+    // 2. Get projects where user is a member
+    const projectsSnapshot = await db.collection('projects')
+      .where('memberIds', 'array-contains', taskerId)
+      .get();
+    
+    const userProjectIds = [];
+    const projectMap = {};
+    
+    projectsSnapshot.forEach(doc => {
+      userProjectIds.push(doc.id);
+      projectMap[doc.id] = doc.data().name || 'Unnamed Project';
+    });
+
+    // 3. Get tasks from user's projects (that they might not be directly assigned to)
+    let projectTasks = [];
+    if (userProjectIds.length > 0) {
+      // Firestore 'in' queries support max 30 values, batch if needed
+      const batchSize = 30;
+      for (let i = 0; i < userProjectIds.length; i += batchSize) {
+        const batch = userProjectIds.slice(i, i + batchSize);
+        const snapshot = await db.collection('tasks')
+          .where('projectId', 'in', batch)
+          .limit(100)
+          .get();
+        
+        snapshot.forEach(doc => {
+          projectTasks.push({ id: doc.id, ...doc.data() });
+        });
+      }
+    }
+
+    // 4. Merge and deduplicate tasks
+    const allTasksMap = new Map();
+    
+    // Add assigned tasks first
+    assignedTasks.forEach(task => {
+      allTasksMap.set(task.id, task);
+    });
+    
+    // Add project tasks (won't overwrite if already exists)
+    projectTasks.forEach(task => {
+      if (!allTasksMap.has(task.id)) {
+        allTasksMap.set(task.id, task);
+      }
+    });
+
+    const allTasks = Array.from(allTasksMap.values());
 
     // Filter out completed tasks for the list view
-    const pendingTasks = tasks.filter(t => t.status !== 'completed');
+    const pendingTasks = allTasks.filter(t => t.status !== 'completed');
 
-    // Fetch project names for tasks with projectId
-    const { admin } = require('../config/firebase');
-    const db = admin.firestore();
-    const projectIds = [...new Set(pendingTasks.filter(t => t.projectId).map(t => t.projectId))];
-    const projectMap = {};
+    // Fetch project names for any tasks with projectId not yet in projectMap
+    const missingProjectIds = [...new Set(
+      pendingTasks
+        .filter(t => t.projectId && !projectMap[t.projectId])
+        .map(t => t.projectId)
+    )];
 
-    if (projectIds.length > 0) {
-      // Fetch all projects in parallel
-      const projectPromises = projectIds.map(id => db.collection('projects').doc(id).get());
+    if (missingProjectIds.length > 0) {
+      const projectPromises = missingProjectIds.map(id => db.collection('projects').doc(id).get());
       const projectDocs = await Promise.all(projectPromises);
       
       projectDocs.forEach(doc => {
@@ -480,6 +530,30 @@ async function handleListTasks(taskerId, params = {}) {
       ...task,
       projectName: task.projectId ? (projectMap[task.projectId] || 'Unknown Project') : null,
     }));
+
+    // Sort by priority and due date
+    tasksWithProjects.sort((a, b) => {
+      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      const aPriority = priorityOrder[a.priority] ?? 2;
+      const bPriority = priorityOrder[b.priority] ?? 2;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      
+      // Then by due date (tasks with due dates first)
+      if (a.dueDate && !b.dueDate) return -1;
+      if (!a.dueDate && b.dueDate) return 1;
+      if (a.dueDate && b.dueDate) {
+        const aDate = a.dueDate.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+        const bDate = b.dueDate.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+        return aDate - bDate;
+      }
+      return 0;
+    });
+
+    logger.info('handleListTasks results', { 
+      assignedCount: assignedTasks.length, 
+      projectTasksCount: projectTasks.length,
+      totalPending: pendingTasks.length 
+    });
 
     return nlpService.formatTaskList(tasksWithProjects);
 
