@@ -151,8 +151,11 @@ exports.getTasks = async (req, res) => {
     // Filter by personal (no projectId) or specific project
     if (personal === 'true') {
       tasks = tasks.filter(t => !t.projectId || t.projectId === 'personal');
+      logger.info('Filtering personal tasks', { count: tasks.length });
     } else if (projectId && projectId !== '') {
+      const beforeCount = tasks.length;
       tasks = tasks.filter(t => t.projectId === projectId);
+      logger.info('Filtering by projectId', { projectId, beforeCount, afterCount: tasks.length });
     }
 
     // Apply filter
