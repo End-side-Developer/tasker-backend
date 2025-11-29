@@ -148,9 +148,33 @@ class FirestoreListenerService {
       }
     }
 
-    // Notify explicitly assigned users (task_assigned)
-    if (task.assignees?.length > 0) {
-      for (const assigneeId of task.assignees) {
+    // Create sets for comparison
+    const projectMemberSet = new Set(projectMembers);
+    const taskAssignees = task.assignees || [];
+    
+    // Determine if there are EXPLICIT assignees (not just project members)
+    // A task has explicit assignees if:
+    // 1. It has assignees AND
+    // 2. Either it's not in a project, OR the assignees are different from project members
+    const hasExplicitAssignees = taskAssignees.length > 0 && (
+      !task.projectId || // Not in a project - any assignee is explicit
+      taskAssignees.some(a => !projectMemberSet.has(a)) || // Has assignees outside project
+      taskAssignees.length !== projectMembers.length || // Different count
+      !taskAssignees.every(a => projectMemberSet.has(a)) // Not all match project members
+    );
+
+    // Check if assignees is essentially "no one specifically assigned"
+    // This happens when assignees === projectMembers (everyone in project)
+    const isAssignedToEveryone = task.projectId && 
+      taskAssignees.length === projectMembers.length &&
+      taskAssignees.every(a => projectMemberSet.has(a)) &&
+      projectMembers.every(m => taskAssignees.includes(m));
+
+    logger.info(`Task ${taskId}: hasExplicitAssignees=${hasExplicitAssignees}, isAssignedToEveryone=${isAssignedToEveryone}, assignees=${taskAssignees.length}, projectMembers=${projectMembers.length}`);
+
+    // Only send task_assigned if there are EXPLICIT assignees (not everyone in project)
+    if (hasExplicitAssignees && !isAssignedToEveryone) {
+      for (const assigneeId of taskAssignees) {
         if (assigneeId === task.createdBy) continue;
 
         await cliqNotifier.notifyUser(assigneeId, {
@@ -161,14 +185,18 @@ class FirestoreListenerService {
       }
     }
 
-    // Notify project members who are NOT assignees (task_created_in_project)
+    // Notify project members about the new task (task_created_in_project)
+    // Skip those who were explicitly assigned (they got task_assigned notification)
     if (task.projectId && projectMembers.length > 0) {
-      const assigneeSet = new Set(task.assignees || []);
+      const explicitlyAssignedSet = (hasExplicitAssignees && !isAssignedToEveryone) 
+        ? new Set(taskAssignees) 
+        : new Set();
       
       for (const memberId of projectMembers) {
-        // Skip creator and assignees (they already got notified)
+        // Skip creator
         if (memberId === task.createdBy) continue;
-        if (assigneeSet.has(memberId)) continue;
+        // Skip explicitly assigned users (they already got task_assigned)
+        if (explicitlyAssignedSet.has(memberId)) continue;
 
         await cliqNotifier.notifyUser(memberId, {
           type: 'task_created_in_project',
