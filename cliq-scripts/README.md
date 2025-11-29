@@ -103,10 +103,10 @@ Schedulers are located in `schedulers/` folder and automate routine notification
 
 ### Available Schedulers
 
-| Scheduler | File | Schedule | Description |
-|-----------|------|----------|-------------|
-| Daily Reminder | `dailyTaskReminder-scheduler.dg` | Daily 9:00 AM | Sends pending/overdue task reminders |
-| Weekly Digest | `weeklyDigest-scheduler.dg` | Monday 9:00 AM | Sends weekly productivity summary |
+| Scheduler      | File                             | Schedule       | Description                          |
+| -------------- | -------------------------------- | -------------- | ------------------------------------ |
+| Daily Reminder | `dailyTaskReminder-scheduler.dg` | Daily 9:00 AM  | Sends pending/overdue task reminders |
+| Weekly Digest  | `weeklyDigest-scheduler.dg`      | Monday 9:00 AM | Sends weekly productivity summary    |
 
 ### Setting Up Schedulers in Zoho Cliq
 

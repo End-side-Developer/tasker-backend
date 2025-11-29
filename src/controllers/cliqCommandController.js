@@ -1262,16 +1262,40 @@ exports.getDailyReminders = async (req, res) => {
       });
     }
 
+    // Deduplicate by cliqUserId - keep only the first (most recent) mapping per user
+    const uniqueMappings = new Map();
+    for (const mappingDoc of mappingsSnapshot.docs) {
+      const mapping = mappingDoc.data();
+      const cliqUserId = mapping.cliq_user_id;
+      
+      // Skip if we already have this cliqUserId
+      if (uniqueMappings.has(cliqUserId)) {
+        continue;
+      }
+      uniqueMappings.set(cliqUserId, mapping);
+    }
+
     const usersData = [];
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
-    for (const mappingDoc of mappingsSnapshot.docs) {
-      const mapping = mappingDoc.data();
-      const cliqUserId = mapping.cliq_user_id;
+    for (const [cliqUserId, mapping] of uniqueMappings) {
       const taskerUserId = mapping.tasker_user_id;
-      const userName = mapping.cliq_user_name || 'there';
+      let userName = mapping.cliq_user_name || 'there';
+
+      // Try to get actual name from users collection if userName is missing
+      if (!mapping.cliq_user_name || mapping.cliq_user_name === 'Unknown') {
+        try {
+          const userDoc = await getDb().collection('users').doc(taskerUserId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            userName = userData.displayName || userData.name || userData.email?.split('@')[0] || 'there';
+          }
+        } catch (e) {
+          // Keep default
+        }
+      }
 
       // Check notification settings - skip if reminders disabled
       const settingsDoc = await getDb().collection('cliq_notification_settings').doc(cliqUserId).get();
@@ -1383,15 +1407,36 @@ exports.getWeeklyDigest = async (req, res) => {
       });
     }
 
+    // Deduplicate by cliqUserId
+    const uniqueMappings = new Map();
+    for (const mappingDoc of mappingsSnapshot.docs) {
+      const mapping = mappingDoc.data();
+      const cliqUserId = mapping.cliq_user_id;
+      if (!uniqueMappings.has(cliqUserId)) {
+        uniqueMappings.set(cliqUserId, mapping);
+      }
+    }
+
     const usersData = [];
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    for (const mappingDoc of mappingsSnapshot.docs) {
-      const mapping = mappingDoc.data();
-      const cliqUserId = mapping.cliq_user_id;
+    for (const [cliqUserId, mapping] of uniqueMappings) {
       const taskerUserId = mapping.tasker_user_id;
-      const userName = mapping.cliq_user_name || 'there';
+      let userName = mapping.cliq_user_name || 'there';
+
+      // Try to get actual name from users collection if userName is missing
+      if (!mapping.cliq_user_name || mapping.cliq_user_name === 'Unknown') {
+        try {
+          const userDoc = await getDb().collection('users').doc(taskerUserId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            userName = userData.displayName || userData.name || userData.email?.split('@')[0] || 'there';
+          }
+        } catch (e) {
+          // Keep default
+        }
+      }
 
       // Check notification settings
       const settingsDoc = await getDb().collection('cliq_notification_settings').doc(cliqUserId).get();
