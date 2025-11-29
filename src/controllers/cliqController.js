@@ -159,21 +159,17 @@ class CliqController {
       }
 
       // Check if this Cliq user is already linked
-      const existingMapping = await getDb().collection('cliq_user_mappings')
-        .where('cliq_user_id', '==', cliqUserId)
-        .where('is_active', '==', true)
-        .get();
+      const existingMapping = await getDb().collection('cliq_user_mappings').doc(cliqUserId).get();
 
-      if (!existingMapping.empty) {
+      if (existingMapping.exists && existingMapping.data().is_active === true) {
         return res.status(400).json({
           success: false,
           error: { message: 'This Cliq account is already linked to a Tasker account. Unlink first to link to a different account.' },
         });
       }
 
-      // Create the user mapping
-      const mappingId = `${cliqUserId}_${codeData.tasker_user_id}`;
-      await getDb().collection('cliq_user_mappings').doc(mappingId).set({
+      // Create or update the user mapping (use cliqUserId as doc ID for consistency)
+      await getDb().collection('cliq_user_mappings').doc(cliqUserId).set({
         cliq_user_id: cliqUserId,
         cliq_user_name: cliqUserName || 'Unknown',
         cliq_user_email: cliqUserEmail || null,

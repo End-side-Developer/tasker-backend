@@ -17,6 +17,8 @@ class CliqService {
   }
   /**
    * Map Cliq user to Tasker user
+   * Only returns a user ID if there is an ACTIVE explicit mapping
+   * Does NOT fall back to email - user must be explicitly linked
    */
   async mapCliqUserToTasker(cliqUserId, email = null) {
     try {
@@ -24,25 +26,18 @@ class CliqService {
 
       if (!doc.exists) {
         logger.warn('Cliq user mapping not found', { cliqUserId });
-        
-        // Fallback to email lookup if provided
-        if (email) {
-          const userSnapshot = await this.db.collection('users')
-            .where('email', '==', email.toLowerCase())
-            .limit(1)
-            .get();
-          
-          if (!userSnapshot.empty) {
-            const firebaseUserId = userSnapshot.docs[0].id;
-            logger.info(`Found Firebase user by email fallback: ${email} -> ${firebaseUserId}`);
-            return firebaseUserId;
-          }
-        }
-        
         return null;
       }
 
-      return doc.data().tasker_user_id;
+      const mappingData = doc.data();
+      
+      // Check if the mapping is active (not unlinked)
+      if (mappingData.is_active === false) {
+        logger.info('Cliq user mapping exists but is inactive (unlinked)', { cliqUserId });
+        return null;
+      }
+
+      return mappingData.tasker_user_id;
     } catch (error) {
       logger.error('Error mapping Cliq user:', error);
       throw error;
@@ -59,7 +54,9 @@ class CliqService {
         cliq_user_id: cliqUserId,
         cliq_user_name: cliqUserName,
         tasker_user_id: taskerUserId,
+        is_active: true,
         created_at: admin.firestore.FieldValue.serverTimestamp(),
+        linked_at: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       logger.info('Cliq user mapping created', { cliqUserId, taskerUserId });
@@ -78,12 +75,19 @@ class CliqService {
       // First, check if user is already linked
       const existingMapping = await this.db.collection('cliq_user_mappings').doc(cliqUserId).get();
       if (existingMapping.exists) {
-        logger.info('User already linked', { cliqUserId });
-        return { 
-          success: true, 
-          taskerId: existingMapping.data().tasker_user_id,
-          alreadyLinked: true 
-        };
+        const mappingData = existingMapping.data();
+        
+        // If mapping exists and is active, user is already linked
+        if (mappingData.is_active !== false) {
+          logger.info('User already linked', { cliqUserId });
+          return { 
+            success: true, 
+            taskerId: mappingData.tasker_user_id,
+            alreadyLinked: true 
+          };
+        }
+        // If mapping exists but is inactive, we'll reactivate it below
+        logger.info('Found inactive mapping, will reactivate', { cliqUserId });
       }
 
       // Find Tasker user by email
@@ -103,7 +107,7 @@ class CliqService {
       const taskerUserId = userSnapshot.docs[0].id;
       const taskerUserData = userSnapshot.docs[0].data();
 
-      // Create the mapping
+      // Create or update the mapping (reactivate if previously unlinked)
       await this.createUserMapping(cliqUserId, cliqUserName, taskerUserId);
 
       logger.info('Cliq user linked successfully', { 
