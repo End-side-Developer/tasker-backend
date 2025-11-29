@@ -223,18 +223,20 @@ class CliqService {
 
   _getTaskEmoji(priority) {
     const emojiMap = {
-      high: '🔥',
-      medium: '📋',
-      low: '📝',
+      urgent: '🔴',
+      high: '🟠',
+      medium: '🟡',
+      low: '🟢',
     };
-    return emojiMap[priority] || '✅';
+    return emojiMap[priority] || '📋';
   }
 
   _getThemeColor(priority) {
     const colorMap = {
-      high: 'red',
-      medium: 'orange',
-      low: 'blue',
+      urgent: 'red',
+      high: 'orange',
+      medium: 'yellow',
+      low: 'green',
     };
     return colorMap[priority] || 'gray';
   }

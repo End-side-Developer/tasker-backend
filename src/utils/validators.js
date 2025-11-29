@@ -19,8 +19,8 @@ const validateTaskCreation = [
 
   body('priority')
     .optional()
-    .isIn(['low', 'medium', 'high'])
-    .withMessage('Priority must be low, medium, or high'),
+    .isIn(['low', 'medium', 'high', 'urgent'])
+    .withMessage('Priority must be low, medium, high, or urgent'),
 
   body('projectId')
     .optional()
@@ -67,7 +67,7 @@ const validateTaskUpdate = [
 
   body('priority')
     .optional()
-    .isIn(['low', 'medium', 'high'])
+    .isIn(['low', 'medium', 'high', 'urgent'])
     .withMessage('Invalid priority'),
 
   (req, res, next) => {
