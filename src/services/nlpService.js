@@ -57,6 +57,13 @@ class NLPService {
         /^✅\s*(.+)/i,
       ],
 
+      // Edit/Update task patterns
+      edit_task: [
+        /^(edit|update|modify|change) (task )?\s*['"]?(.+?)['"]?$/i,
+        /^(edit|update|modify|change) (the )?(task )?['"]?(.+?)['"]?$/i,
+        /^✏️\s*(.+)/i,
+      ],
+
       // Create task patterns
       create_task: [
         /^(create|add|new) (a )?(task|todo)(:?\s*)(.+)/i,
@@ -192,6 +199,13 @@ class NLPService {
           taskName: taskName ? taskName.trim() : null,
         };
 
+      case 'edit_task':
+        // Extract task name to edit from various patterns
+        const editTaskName = match[4] || match[3] || match[1];
+        return {
+          taskName: editTaskName ? editTaskName.trim() : null,
+        };
+
       case 'create_task':
         // Extract task title from various patterns
         const title = match[5] || match[3] || match[1];
@@ -231,6 +245,9 @@ class NLPService {
         `• "I'm done with [task name]"\n` +
         `• "Mark [task] as complete"\n` +
         `• "Finished [task name]"\n\n` +
+        `✏️ **Edit Tasks**\n` +
+        `• "Edit [task name]"\n` +
+        `• "Update [task name]"\n\n` +
         `📝 **Create Tasks**\n` +
         `• "Create a task [title]"\n` +
         `• "Remind me to [action] tomorrow at 5pm"\n` +

@@ -55,6 +55,10 @@ exports.processMessage = async (req, res) => {
         response = await handleCompleteTask(taskerId, intent.params);
         break;
 
+      case 'edit_task':
+        response = await handleEditTask(taskerId, intent.params);
+        break;
+
       case 'create_task':
         response = await handleCreateTask(taskerId, intent.params, userName);
         break;
@@ -553,6 +557,67 @@ async function handleCompleteTask(taskerId, params) {
 }
 
 /**
+ * Handle edit task intent - find task by name and return edit form trigger
+ */
+async function handleEditTask(taskerId, params) {
+  try {
+    if (!params.taskName) {
+      return {
+        text: "🤔 Which task would you like to edit?\n\nTry: \"edit [task name]\"",
+      };
+    }
+
+    // Get user's tasks
+    const tasks = await taskService.listTasks({ assignee: taskerId });
+
+    // Find matching task using fuzzy search
+    const matchedTask = nlpService.findMatchingTask(tasks, params.taskName);
+
+    if (!matchedTask) {
+      const taskList = tasks.slice(0, 5).map(t => `• ${t.title}`).join('\n');
+      return {
+        text: `🔍 I couldn't find a task matching "${params.taskName}"\n\n` +
+          `Your tasks:\n${taskList}\n\nTry the exact task name!`,
+      };
+    }
+
+    // Return response with edit form button - task found!
+    return {
+      text: `📝 **Edit Task: "${matchedTask.title}"**\n\n` +
+        `Current details:\n` +
+        `• Status: ${matchedTask.status || 'pending'}\n` +
+        `• Priority: ${matchedTask.priority || 'medium'}\n` +
+        (matchedTask.dueDate ? `• Due: ${nlpService.formatDate(matchedTask.dueDate)}\n` : '') +
+        `\nClick below to edit:`,
+      buttons: [
+        {
+          label: '✏️ Edit Task',
+          type: '+',
+          action: {
+            type: 'invoke.function',
+            data: { name: 'editTaskForm', taskId: matchedTask.id, taskName: matchedTask.title },
+          },
+        },
+        {
+          label: '✅ Mark Complete',
+          type: '+',
+          action: {
+            type: 'invoke.function',
+            data: { name: 'botCompleteTask', taskId: matchedTask.id },
+          },
+        },
+      ],
+    };
+
+  } catch (error) {
+    logger.error('Error handling edit task:', error);
+    return {
+      text: "😅 I couldn't find that task. Please try again!",
+    };
+  }
+}
+
+/**
  * Handle create task intent
  */
 async function handleCreateTask(taskerId, params, userName) {
@@ -589,7 +654,7 @@ async function handleCreateTask(taskerId, params, userName) {
       responseText += `\n🔥 Priority: ${params.priority}`;
     }
 
-    responseText += `\n\n💡 To edit this task, use:\n\`/tasker edit ${newTask.id}\``;
+    responseText += `\n\n💡 To edit this task, type:\n\`edit ${params.taskTitle}\``;
 
     return {
       text: responseText,
