@@ -246,7 +246,7 @@ if(sub_action == "by_priority") {
 All scripts use the following configuration:
 
 ```deluge
-BASE_URL = "https://tasker-backend-b10p.onrender.com/api/cliq/commands";
+BASE_URL = "https://tasker-backend-b2c0era7hrfcd5aw.koreacentral-01.azurewebsites.net/api/cliq/commands";
 API_KEY = "your_api_key_here";
 ```
 

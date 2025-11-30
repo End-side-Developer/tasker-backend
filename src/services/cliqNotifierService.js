@@ -88,20 +88,18 @@ class CliqNotifierService {
 
       const message = this.formatNotification(notification);
       
-      // Build payload with target_user for the incoming webhook handler
+      // Build payload with userids to target specific user via /message endpoint
+      // This sends a DM to the specific user, NOT a broadcast to all bot subscribers
       const payload = {
         ...message,
-        notification_type: notification.type,
-        target_user: {
-          id: mapping.cliq_user_id,
-          tasker_id: userId
-        }
+        userids: mapping.cliq_user_id,  // Target specific user by their Cliq ID
+        sync_message: true  // Ensure message is delivered synchronously
       };
 
       logger.info(`Sending ${notification.type} notification to Cliq user ${mapping.cliq_user_id}`);
 
-      // Use 'bot' (incoming webhook) - the handler will DM the target user
-      const result = await this.sendToCliq(payload, 'bot');
+      // Use 'bot_message' endpoint (/message) to send DM to specific user
+      const result = await this.sendToCliq(payload, 'bot_message');
       
       if (result.success) {
         await this.logNotification(userId, notification);
