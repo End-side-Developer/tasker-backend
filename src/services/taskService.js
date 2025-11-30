@@ -133,6 +133,7 @@ class TaskService {
         recurrenceInterval: clampRecurrenceInterval(taskData.recurrenceInterval ?? 1),
         recurrenceEndDate: toTimestampOrNull(admin, taskData.recurrenceEndDate),
         parentRecurringTaskId: taskData.parentRecurringTaskId ?? null,
+        createdBy: taskData.createdBy ?? null,  // WHO created the task
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: null,
       };
