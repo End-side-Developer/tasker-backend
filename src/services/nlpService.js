@@ -315,10 +315,12 @@ class NLPService {
   getNotLinkedResponse() {
     return {
       text: "🔗 I don't recognize you yet!\n\n" +
-        "To link your account:\n" +
+        "📲 **Don't have Tasker app?**\n" +
+        "Download: https://github.com/ashu-debuger/Tasker/releases/tag/v1.0.0\n\n" +
+        "**To link your account:**\n" +
         "1️⃣ Open **Tasker App → Settings → Zoho Cliq Integration**\n" +
         "2️⃣ Tap **Generate Linking Code**\n" +
-        "3️⃣ Click the button below and enter your code\n\n" +
+        "3️⃣ Use `/tasker link <code>` with your code\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
       buttons: [
         {
