@@ -23,6 +23,9 @@ router.put('/:id', validateTaskUpdate, taskController.updateTask);
 // Complete task
 router.post('/:id/complete', taskController.completeTask);
 
+// Add note to task
+router.post('/:id/notes', taskController.addNote);
+
 // Delete task
 router.delete('/:id', taskController.deleteTask);
 

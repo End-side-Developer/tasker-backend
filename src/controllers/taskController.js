@@ -238,6 +238,70 @@ class TaskController {
       next(error);
     }
   }
+
+  /**
+   * Add note to task
+   * POST /api/tasks/:id/notes
+   */
+  async addNote(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { content, cliqContext = {} } = req.body;
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'MISSING_CONTENT',
+            message: 'Note content is required.',
+          },
+        });
+      }
+
+      // Get the task first to verify it exists and get the title
+      const task = await taskService.getTaskById(id);
+      
+      // Map Cliq user to Tasker user if context provided
+      let addedBy = null;
+      if (cliqContext.userId) {
+        addedBy = await cliqService.mapCliqUserToTasker(cliqContext.userId);
+        if (!addedBy) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'USER_NOT_LINKED',
+              message: 'User not linked. Please connect your Tasker account first.',
+            },
+          });
+        }
+      }
+
+      // Add note to task
+      const note = await taskService.addNoteToTask(id, {
+        content,
+        addedBy,
+        source: cliqContext.source || 'cliq',
+        messageId: cliqContext.messageId,
+        channelId: cliqContext.channelId,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: '✅ Note added successfully!',
+        taskTitle: task.title,
+        note,
+      });
+    } catch (error) {
+      if (error.message === 'Task not found') {
+        return res.status(404).json({
+          success: false,
+          error: { message: 'Task not found' },
+        });
+      }
+      logger.error('Error in addNote controller:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = new TaskController();

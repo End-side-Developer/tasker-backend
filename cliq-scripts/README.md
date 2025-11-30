@@ -27,7 +27,17 @@ cliq-scripts/
 ├── functions/          # Form handlers and functions (.dg)
 │   ├── createProject-function.dg
 │   ├── inviteMember-function.dg
+│   ├── showCreateTaskFromMessageForm-function.dg
+│   ├── submitTaskFromMessage-function.dg
+│   ├── showAddNoteForm-function.dg
+│   ├── submitAddNote-function.dg
 │   └── inviteMemberChangeHandler.dg
+│
+├── message-actions/    # Message action handlers (.dg)
+│   ├── createTaskFromMessage-action-handler.dg
+│   └── addNoteToTask-action-handler.dg
+│
+├── schedulers/         # Scheduled task handlers (.dg)
 │
 └── README.md          # This file
 ```
@@ -48,6 +58,55 @@ cliq-scripts/
 - **Purpose**: Process form submissions and handle form changes
 - **Examples**: Submit handler for invite form, change handler for dynamic fields
 - **Upload to**: Zoho Cliq Bot → Functions
+
+### Message Actions (`.dg` in `message-actions/`)
+- **Purpose**: Allow users to perform actions on messages (right-click → Installed Apps)
+- **Examples**: Create task from message, add message as note to existing task
+- **Upload to**: Zoho Cliq Extension → Message Actions
+- **How it works**: User selects a message → clicks "..." → Installed Apps → "Create Task" or "Add to Task"
+
+## 🎯 Message Actions
+
+Message Actions provide a powerful way to convert conversations into actionable tasks.
+
+### Available Message Actions
+
+| Action | Handler File | Description |
+|--------|--------------|-------------|
+| Create Task | `createTaskFromMessage-action-handler.dg` | Convert a message into a new Tasker task |
+| Add to Task | `addNoteToTask-action-handler.dg` | Add message as a note to an existing task |
+
+### How Users Access Message Actions
+
+1. **Single Message**: Hover over a message → Click "..." → Installed Apps → Select action
+2. **Multiple Messages**: Select up to 25 messages → Same menu → Action applies to all
+3. **Attachments**: Files attached to messages are captured in task description
+
+### Message Action Flow
+
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│ User clicks     │ --> │ Action handler runs   │ --> │ Form displayed  │
+│ "Create Task"   │     │ (extracts message)    │     │ (pre-filled)    │
+└─────────────────┘     └──────────────────────┘     └─────────────────┘
+                                                              │
+                                                              v
+┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│ Task created    │ <-- │ Submit handler runs   │ <-- │ User submits    │
+│ in Tasker       │     │ (calls backend API)   │     │ form            │
+└─────────────────┘     └──────────────────────┘     └─────────────────┘
+```
+
+### Setting Up Message Actions in Zoho Cliq
+
+1. Go to **Zoho Cliq → Extensions → Your Extension → Message Actions**
+2. Click **"Create Message Action"**
+3. Configure:
+   - **Name**: "Create Task" or "Add to Task"
+   - **Description**: Brief explanation shown to users
+   - **Handler**: Paste the action handler script
+4. Link supporting functions from the Functions section
+5. Save and test
 
 ## 🔧 Configuration
 
@@ -150,4 +209,4 @@ All Deluge scripts use `.dg` extension for:
 
 ---
 
-**Last Updated**: November 29, 2025
+**Last Updated**: November 30, 2025

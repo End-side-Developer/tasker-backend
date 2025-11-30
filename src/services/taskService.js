@@ -295,6 +295,51 @@ class TaskService {
       throw error;
     }
   }
+
+  /**
+   * Add note to task
+   * Stores notes in a subcollection under the task
+   */
+  async addNoteToTask(taskId, noteData) {
+    try {
+      const { admin } = require('../config/firebase');
+      
+      // First verify task exists
+      const taskRef = this.db.collection('tasks').doc(taskId);
+      const taskDoc = await taskRef.get();
+      
+      if (!taskDoc.exists) {
+        throw new Error('Task not found');
+      }
+      
+      // Create note in subcollection
+      const noteRef = taskRef.collection('notes').doc();
+      const noteId = noteRef.id;
+      
+      const note = {
+        content: noteData.content,
+        addedBy: noteData.addedBy || null,
+        source: noteData.source || 'cliq',
+        messageId: noteData.messageId || null,
+        channelId: noteData.channelId || null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      
+      await noteRef.set(note);
+      
+      // Update task's updatedAt timestamp
+      await taskRef.update({
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      
+      logger.info('Note added to task', { taskId, noteId });
+      
+      return { id: noteId, ...note };
+    } catch (error) {
+      logger.error('Error adding note to task:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new TaskService();
