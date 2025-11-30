@@ -1,5 +1,6 @@
 const { admin } = require('../config/firebase');
 const taskService = require('../services/taskService');
+const cliqService = require('../services/cliqService');
 const { validateTaskData, validateProjectData } = require('../utils/validators');
 const { formatTaskCard, formatProjectCard, formatListCard } = require('../utils/cardFormatter');
 const logger = require('../config/logger');
@@ -239,6 +240,20 @@ exports.assignTask = async (req, res) => {
       });
     }
 
+    // Map Cliq user IDs to Tasker user IDs
+    // assignedTo is a Cliq user ID, we need the Tasker user ID
+    const taskerAssigneeId = await cliqService.mapCliqUserToTasker(assignedTo);
+    const taskerAssignerId = assignedBy ? await cliqService.mapCliqUserToTasker(assignedBy) : null;
+
+    if (!taskerAssigneeId) {
+      logger.warn(`Cannot assign task: Cliq user ${assignedTo} is not linked to Tasker`);
+      return res.status(400).json({
+        success: false,
+        message: '❌ User not linked to Tasker',
+        text: `❌ ${assignedToName || 'This user'} has not linked their Tasker account. They need to link first using /tasker link`
+      });
+    }
+
     const taskRef = getDb().collection('tasks').doc(taskId);
     const taskDoc = await taskRef.get();
 
@@ -250,16 +265,17 @@ exports.assignTask = async (req, res) => {
       });
     }
 
+    // Use Tasker user ID (not Cliq ID) for assignees
     await taskRef.update({
-      assignees: admin.firestore.FieldValue.arrayUnion(assignedTo),
-      assignedBy: assignedBy || 'system',
+      assignees: admin.firestore.FieldValue.arrayUnion(taskerAssigneeId),
+      assignedBy: taskerAssignerId || assignedBy || 'system',
       assignedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     const taskData = taskDoc.data();
 
-    logger.info(`Task ${taskId} assigned to ${assignedTo} via Cliq`);
+    logger.info(`Task ${taskId} assigned to Tasker user ${taskerAssigneeId} (Cliq: ${assignedTo}) via Cliq`);
 
     const card = formatTaskCard({
       ...taskData,
