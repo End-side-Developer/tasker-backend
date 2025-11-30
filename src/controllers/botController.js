@@ -637,7 +637,7 @@ async function handleEditTask(taskerId, params) {
         `• Status: ${matchedTask.status || 'pending'}\n` +
         `• Priority: ${matchedTask.priority || 'medium'}\n` +
         (matchedTask.dueDate ? `• Due: ${nlpService.formatDate(matchedTask.dueDate)}\n` : '') +
-        `\nClick below to edit:`,
+        `\nClick below to edit, or say **"done with ${matchedTask.title}"** to complete it:`,
       buttons: [
         {
           label: '✏️ Edit Task',
@@ -645,14 +645,6 @@ async function handleEditTask(taskerId, params) {
           action: {
             type: 'invoke.function',
             data: { name: 'editTaskForm', taskId: matchedTask.id, taskName: matchedTask.title },
-          },
-        },
-        {
-          label: '✅ Mark Complete',
-          type: '+',
-          action: {
-            type: 'invoke.function',
-            data: { name: 'botCompleteTask', taskId: matchedTask.id },
           },
         },
       ],
