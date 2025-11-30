@@ -399,13 +399,27 @@ class CliqController {
   async getUserMapping(req, res, next) {
     try {
       const { cliqUserId } = req.params;
-      const taskerUserId = await cliqService.mapCliqUserToTasker(cliqUserId);
+      const mappingDetails = await cliqService.getUserMappingDetails(cliqUserId);
 
-      res.json({
-        success: true,
-        linked: !!taskerUserId,
-        taskerUserId,
-      });
+      if (mappingDetails) {
+        res.json({
+          success: true,
+          linked: true,
+          taskerUserId: mappingDetails.taskerId,
+          taskerUser: {
+            taskerId: mappingDetails.taskerId,
+            cliqUserName: mappingDetails.cliqUserName,
+            linkedAt: mappingDetails.linkedAt,
+          },
+        });
+      } else {
+        res.json({
+          success: true,
+          linked: false,
+          taskerUserId: null,
+          taskerUser: null,
+        });
+      }
     } catch (error) {
       logger.error('Error in getUserMapping controller:', error);
       next(error);

@@ -45,6 +45,47 @@ class CliqService {
   }
 
   /**
+   * Get full user mapping details including linked date
+   * Returns null if not linked, or full mapping object if linked
+   */
+  async getUserMappingDetails(cliqUserId) {
+    try {
+      const doc = await this.db.collection('cliq_user_mappings').doc(cliqUserId).get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      const mappingData = doc.data();
+      
+      // Check if the mapping is active (not unlinked)
+      if (mappingData.is_active === false) {
+        return null;
+      }
+
+      // Format linkedAt date if it exists
+      let linkedAt = null;
+      if (mappingData.linked_at) {
+        // Handle Firestore Timestamp
+        const timestamp = mappingData.linked_at._seconds 
+          ? new Date(mappingData.linked_at._seconds * 1000)
+          : mappingData.linked_at.toDate ? mappingData.linked_at.toDate() : new Date(mappingData.linked_at);
+        linkedAt = timestamp.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+      }
+
+      return {
+        taskerId: mappingData.tasker_user_id,
+        cliqUserName: mappingData.cliq_user_name,
+        linkedAt: linkedAt,
+        isActive: mappingData.is_active !== false,
+      };
+    } catch (error) {
+      logger.error('Error getting user mapping details:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create Cliq user mapping
    */
   async createUserMapping(cliqUserId, cliqUserName, taskerUserId) {
