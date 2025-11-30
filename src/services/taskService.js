@@ -109,8 +109,13 @@ class TaskService {
       const assignees = sanitizeStringArray(taskData.assignees);
       const assignedBy = taskData.assignedBy ?? (assignees.length > 0 ? taskData.createdBy ?? null : null);
 
+      // Treat 'personal', 'none', empty string as null (personal task)
+      const projectId = taskData.projectId && taskData.projectId !== 'personal' && taskData.projectId !== 'none'
+        ? taskData.projectId
+        : null;
+
       const task = {
-        projectId: taskData.projectId || null,
+        projectId,
         title: taskData.title,
         description: taskData.description ?? null,
         isDescriptionEncrypted: Boolean(taskData.isDescriptionEncrypted),
