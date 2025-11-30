@@ -28,4 +28,7 @@ router.post('/webhook', cliqController.handleWebhook);
 // Get user mapping
 router.get('/user/:cliqUserId', cliqController.getUserMapping);
 
+// Unlink by Cliq user ID (called from Cliq bot)
+router.post('/user/:cliqUserId/unlink', cliqController.unlinkByCliqUserId);
+
 module.exports = router;

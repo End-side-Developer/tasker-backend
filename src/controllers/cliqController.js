@@ -427,6 +427,60 @@ class CliqController {
       next(error);
     }
   }
+
+  /**
+   * Unlink account by Cliq user ID
+   * POST /api/cliq/user/:cliqUserId/unlink
+   */
+  async unlinkByCliqUserId(req, res, next) {
+    try {
+      const { cliqUserId } = req.params;
+
+      if (!cliqUserId) {
+        return res.status(400).json({
+          success: false,
+          error: { message: 'Cliq User ID is required' },
+        });
+      }
+
+      // Get the mapping document directly by cliqUserId
+      const mappingRef = getDb().collection('cliq_user_mappings').doc(cliqUserId);
+      const doc = await mappingRef.get();
+
+      if (!doc.exists) {
+        return res.json({
+          success: true,
+          message: 'No Cliq link found for this user',
+        });
+      }
+
+      const mappingData = doc.data();
+
+      // Check if already inactive
+      if (mappingData.is_active === false) {
+        return res.json({
+          success: true,
+          message: 'Account already unlinked',
+        });
+      }
+
+      // Deactivate the mapping
+      await mappingRef.update({
+        is_active: false,
+        unlinked_at: new Date(),
+      });
+
+      logger.info(`Unlinked Cliq account for cliqUserId ${cliqUserId}`);
+
+      res.json({
+        success: true,
+        message: 'Cliq account unlinked successfully',
+      });
+    } catch (error) {
+      logger.error('Error in unlinkByCliqUserId controller:', error);
+      next(error);
+    }
+  }
 }
 
 module.exports = new CliqController();
