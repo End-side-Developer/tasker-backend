@@ -320,15 +320,8 @@ class NLPService {
         "**To link your account:**\n" +
         "1️⃣ Open **Tasker App → Settings → Zoho Cliq Integration**\n" +
         "2️⃣ Tap **Generate Linking Code**\n" +
-        "3️⃣ Use `/tasker link <code>` with your code\n\n" +
+        "3️⃣ Type `/tasker link <code>` with your code\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
-      buttons: [
-        {
-          label: '🔗 Link Account',
-          type: '+',
-          action: { type: 'invoke.function', data: { name: 'showLinkForm' } },
-        },
-      ],
     };
   }
 
