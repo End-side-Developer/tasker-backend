@@ -207,9 +207,14 @@ class TaskService {
   /**
    * Update task
    */
+  /**
+   * Update task
+   */
   async updateTask(taskId, updates) {
     try {
       const { admin } = require('../config/firebase');
+      const cliqNotifier = require('./cliqNotifierService');
+
       const taskRef = this.db.collection('tasks').doc(taskId);
       const doc = await taskRef.get();
 
@@ -217,14 +222,22 @@ class TaskService {
         throw new Error('Task not found');
       }
 
+      const oldTask = doc.data();
       const updateData = { ...updates };
+      const changes = [];
 
       if (updateData.status !== undefined) {
         updateData.status = normalizeStatus(updateData.status);
+        if (updateData.status !== oldTask.status) {
+          changes.push(`Status: ${oldTask.status} ➔ ${updateData.status}`);
+        }
       }
 
       if (updateData.priority !== undefined) {
         updateData.priority = normalizePriority(updateData.priority);
+        if (updateData.priority !== oldTask.priority) {
+          changes.push(`Priority: ${oldTask.priority} ➔ ${updateData.priority}`);
+        }
       }
 
       if (updateData.tags !== undefined) {
@@ -241,6 +254,7 @@ class TaskService {
         if (assignees.length > 0 && !updateData.assignedAt) {
           updateData.assignedAt = admin.firestore.FieldValue.serverTimestamp();
         }
+        // Note: Assignee changes are complex to diff cleanly in text, skipping for now
       }
 
       if (updateData.recurrencePattern !== undefined) {
@@ -252,11 +266,27 @@ class TaskService {
       }
 
       if (updateData.dueDate !== undefined) {
-        updateData.dueDate = toTimestampOrNull(admin, updateData.dueDate);
+        const newDueDate = toTimestampOrNull(admin, updateData.dueDate);
+        updateData.dueDate = newDueDate;
+
+        // Check if due date changed
+        const oldTime = oldTask.dueDate ? oldTask.dueDate.toMillis() : 0;
+        const newTime = newDueDate ? newDueDate.toMillis() : 0;
+
+        if (oldTime !== newTime) {
+          changes.push('Due Date updated');
+          // RESET FLAG: If due date changes, we must allow "Due Soon" to fire again
+          updateData.dueSoonNotificationSent = false;
+          updateData.lastOverdueNotification = null;
+        }
       }
 
       if (updateData.recurrenceEndDate !== undefined) {
         updateData.recurrenceEndDate = toTimestampOrNull(admin, updateData.recurrenceEndDate);
+      }
+
+      if (updateData.description !== undefined && updateData.description !== oldTask.description) {
+        changes.push('Description updated');
       }
 
       updateData.updatedAt = admin.firestore.FieldValue.serverTimestamp();
@@ -264,7 +294,33 @@ class TaskService {
       await taskRef.update(updateData);
       logger.info('Task updated', { taskId, updates: Object.keys(updates) });
 
-      return { id: taskId, ...doc.data(), ...updateData };
+      // TRIGGER NOTIFICATION
+      // Only notify if there are meaningful changes and it's not just a status completion (handled elsewhere)
+      if (changes.length > 0 && updateData.status !== 'completed') {
+        const newTask = { ...oldTask, ...updateData, id: taskId };
+
+        // Notify assignees
+        for (const assigneeId of (newTask.assignees || [])) {
+          // Don't notify the person who made the update (if we knew who it was, but we don't here easily)
+          // For now, we notify everyone assigned
+          await cliqNotifier.notifyUser(assigneeId, {
+            type: 'task_updated',
+            task: newTask,
+            changes: changes
+          });
+        }
+
+        // Notify project channel
+        if (newTask.projectId) {
+          await cliqNotifier.notifyProjectChannel(newTask.projectId, {
+            type: 'task_updated',
+            task: newTask,
+            changes: changes
+          });
+        }
+      }
+
+      return { id: taskId, ...oldTask, ...updateData };
     } catch (error) {
       logger.error('Error updating task:', error);
       throw error;
@@ -308,19 +364,19 @@ class TaskService {
   async addNoteToTask(taskId, noteData) {
     try {
       const { admin } = require('../config/firebase');
-      
+
       // First verify task exists
       const taskRef = this.db.collection('tasks').doc(taskId);
       const taskDoc = await taskRef.get();
-      
+
       if (!taskDoc.exists) {
         throw new Error('Task not found');
       }
-      
+
       // Create note in subcollection
       const noteRef = taskRef.collection('notes').doc();
       const noteId = noteRef.id;
-      
+
       const note = {
         content: noteData.content,
         addedBy: noteData.addedBy || null,
@@ -329,16 +385,16 @@ class TaskService {
         channelId: noteData.channelId || null,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
-      
+
       await noteRef.set(note);
-      
+
       // Update task's updatedAt timestamp
       await taskRef.update({
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      
+
       logger.info('Note added to task', { taskId, noteId });
-      
+
       return { id: noteId, ...note };
     } catch (error) {
       logger.error('Error adding note to task:', error);

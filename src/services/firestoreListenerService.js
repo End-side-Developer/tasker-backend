@@ -39,7 +39,7 @@ class FirestoreListenerService {
     try {
       // Task collection listeners
       this.setupTaskListeners();
-      
+
       // Project collection listeners
       this.setupProjectListeners();
 
@@ -151,7 +151,7 @@ class FirestoreListenerService {
     // Create sets for comparison
     const projectMemberSet = new Set(projectMembers);
     const taskAssignees = task.assignees || [];
-    
+
     // Determine if there are EXPLICIT assignees (not just project members)
     // A task has explicit assignees if:
     // 1. It has assignees AND
@@ -165,7 +165,7 @@ class FirestoreListenerService {
 
     // Check if assignees is essentially "no one specifically assigned"
     // This happens when assignees === projectMembers (everyone in project)
-    const isAssignedToEveryone = task.projectId && 
+    const isAssignedToEveryone = task.projectId &&
       taskAssignees.length === projectMembers.length &&
       taskAssignees.every(a => projectMemberSet.has(a)) &&
       projectMembers.every(m => taskAssignees.includes(m));
@@ -188,10 +188,10 @@ class FirestoreListenerService {
     // Notify project members about the new task (task_created_in_project)
     // Skip those who were explicitly assigned (they got task_assigned notification)
     if (task.projectId && projectMembers.length > 0) {
-      const explicitlyAssignedSet = (hasExplicitAssignees && !isAssignedToEveryone) 
-        ? new Set(taskAssignees) 
+      const explicitlyAssignedSet = (hasExplicitAssignees && !isAssignedToEveryone)
+        ? new Set(taskAssignees)
         : new Set();
-      
+
       for (const memberId of projectMembers) {
         // Skip creator
         if (memberId === task.createdBy) continue;
@@ -246,8 +246,9 @@ class FirestoreListenerService {
       }
     }
 
-    // Note: For detecting field changes, we'd need to store previous state
-    // This is a simplified version that handles completion
+    // Note: Field updates (priority, due date, etc.) are now handled in TaskService.updateTask
+    // to allow for proper diffing and notification generation.
+    // This listener primarily handles completion status changes.
   }
 
   async handleTaskDeleted(taskId, task) {
