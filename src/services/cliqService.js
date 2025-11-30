@@ -73,11 +73,25 @@ class CliqService {
         linkedAt = timestamp.toISOString().split('T')[0]; // Format: YYYY-MM-DD
       }
 
+      // Fetch user details from users collection to get email
+      let taskerEmail = null;
+      let taskerDisplayName = null;
+      if (mappingData.tasker_user_id) {
+        const userDoc = await this.db.collection('users').doc(mappingData.tasker_user_id).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          taskerEmail = userData.email || null;
+          taskerDisplayName = userData.displayName || userData.name || null;
+        }
+      }
+
       return {
         taskerId: mappingData.tasker_user_id,
         cliqUserName: mappingData.cliq_user_name,
         linkedAt: linkedAt,
         isActive: mappingData.is_active !== false,
+        taskerEmail: taskerEmail,
+        taskerDisplayName: taskerDisplayName,
       };
     } catch (error) {
       logger.error('Error getting user mapping details:', error);

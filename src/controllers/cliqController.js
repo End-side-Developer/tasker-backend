@@ -410,6 +410,8 @@ class CliqController {
             taskerId: mappingDetails.taskerId,
             cliqUserName: mappingDetails.cliqUserName,
             linkedAt: mappingDetails.linkedAt,
+            email: mappingDetails.taskerEmail,
+            displayName: mappingDetails.taskerDisplayName,
           },
         });
       } else {
