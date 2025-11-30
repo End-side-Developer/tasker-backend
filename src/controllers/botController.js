@@ -197,45 +197,20 @@ exports.handleChannelUnlink = async (req, res) => {
 };
 
 /**
- * Link Cliq user to Tasker account
- * POST /api/cliq/bot/user/link
+ * @deprecated Use code-based linking via /api/cliq/link-with-code instead
+ * This email-based linking is insecure - anyone could link any email
+ * Kept for reference but route removed
  */
 exports.linkUserAccount = async (req, res) => {
-  try {
-    const { cliqUserId, cliqUserName, taskerEmail } = req.body;
-
-    logger.info('Link user account request', { cliqUserId, cliqUserName, taskerEmail });
-
-    if (!cliqUserId || !taskerEmail) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields: cliqUserId and taskerEmail' 
-      });
-    }
-
-    // Link the user using cliqService
-    const result = await cliqService.linkCliqUser(cliqUserId, cliqUserName, taskerEmail);
-
-    if (result.success) {
-      return res.json({
-        success: true,
-        message: 'Account linked successfully',
-        taskerId: result.taskerId,
-      });
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: result.error || 'Could not link account. Make sure you entered the correct email.',
-      });
-    }
-
-  } catch (error) {
-    logger.error('Link user error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Failed to link account. Please try again.' 
-    });
-  }
+  // This endpoint has been removed for security reasons
+  // Use the secure 3-step code-based verification flow instead:
+  // 1. User generates code in Tasker app (with password re-auth)
+  // 2. User enters code in Cliq
+  // 3. User verifies challenge number in Tasker app
+  return res.status(410).json({
+    success: false,
+    error: 'This endpoint has been deprecated. Please use /tasker link command with a code from the Tasker app.',
+  });
 };
 
 /**

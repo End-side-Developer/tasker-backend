@@ -315,7 +315,10 @@ class NLPService {
   getNotLinkedResponse() {
     return {
       text: "🔗 I don't recognize you yet!\n\n" +
-        "Please link your Tasker account first using `/tasker link`\n\n" +
+        "To link your account:\n" +
+        "1️⃣ Open **Tasker App → Settings → Zoho Cliq Integration**\n" +
+        "2️⃣ Tap **Generate Linking Code**\n" +
+        "3️⃣ Click the button below and enter your code\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
       buttons: [
         {

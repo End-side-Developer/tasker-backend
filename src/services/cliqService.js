@@ -68,68 +68,18 @@ class CliqService {
   }
 
   /**
-   * Link Cliq user to Tasker account by email
+   * @deprecated Use code-based linking via cliqController.linkWithCode instead
+   * Link Cliq user to Tasker account by email - INSECURE
+   * Anyone could link any email without verification
+   * Kept for reference only
    */
   async linkCliqUser(cliqUserId, cliqUserName, taskerEmail) {
-    try {
-      // First, check if user is already linked
-      const existingMapping = await this.db.collection('cliq_user_mappings').doc(cliqUserId).get();
-      if (existingMapping.exists) {
-        const mappingData = existingMapping.data();
-        
-        // If mapping exists and is active, user is already linked
-        if (mappingData.is_active !== false) {
-          logger.info('User already linked', { cliqUserId });
-          return { 
-            success: true, 
-            taskerId: mappingData.tasker_user_id,
-            alreadyLinked: true 
-          };
-        }
-        // If mapping exists but is inactive, we'll reactivate it below
-        logger.info('Found inactive mapping, will reactivate', { cliqUserId });
-      }
-
-      // Find Tasker user by email
-      const userSnapshot = await this.db.collection('users')
-        .where('email', '==', taskerEmail.toLowerCase())
-        .limit(1)
-        .get();
-
-      if (userSnapshot.empty) {
-        logger.warn('No Tasker account found for email', { taskerEmail });
-        return { 
-          success: false, 
-          error: `No Tasker account found for ${taskerEmail}. Please make sure you're using the same email as your Tasker app.` 
-        };
-      }
-
-      const taskerUserId = userSnapshot.docs[0].id;
-      const taskerUserData = userSnapshot.docs[0].data();
-
-      // Create or update the mapping (reactivate if previously unlinked)
-      await this.createUserMapping(cliqUserId, cliqUserName, taskerUserId);
-
-      logger.info('Cliq user linked successfully', { 
-        cliqUserId, 
-        cliqUserName, 
-        taskerUserId,
-        taskerEmail 
-      });
-
-      return { 
-        success: true, 
-        taskerId: taskerUserId,
-        taskerName: taskerUserData.displayName || taskerUserData.name || taskerEmail
-      };
-
-    } catch (error) {
-      logger.error('Error linking Cliq user:', error);
-      return { 
-        success: false, 
-        error: 'Failed to link account. Please try again.' 
-      };
-    }
+    // This method is deprecated - use the secure 3-step verification flow
+    logger.warn('DEPRECATED: linkCliqUser called - use code-based linking instead');
+    return {
+      success: false,
+      error: 'Email-based linking is deprecated. Please use the secure code-based flow from the Tasker app.',
+    };
   }
 
   /**

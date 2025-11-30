@@ -34,12 +34,8 @@ router.post('/context', botController.handleContext);
  */
 router.post('/channel-unlink', botController.handleChannelUnlink);
 
-/**
- * Link Cliq user to Tasker account
- * POST /api/cliq/bot/user/link
- * Body: { cliqUserId, cliqUserName, taskerEmail }
- */
-router.post('/user/link', botController.linkUserAccount);
+// NOTE: Old email-based linking removed for security
+// Use /api/cliq/link-with-code instead (requires code from Tasker app)
 
 /**
  * Get user link status
