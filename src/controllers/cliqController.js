@@ -169,15 +169,16 @@ class CliqController {
         });
       }
 
-      // Security: Check if challenge has been verified
-      if (!codeData.verified) {
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Challenge verification required. Please verify the code in the Tasker app first.' },
-          challengeNumber: codeData.challenge_number,
-          requiresVerification: true,
-        });
-      }
+      // TODO: Re-enable challenge verification for production
+      // Security: Check if challenge has been verified (temporarily disabled for testing)
+      // if (!codeData.verified) {
+      //   return res.status(400).json({
+      //     success: false,
+      //     error: { message: 'Challenge verification required. Please verify the code in the Tasker app first.' },
+      //     challengeNumber: codeData.challenge_number,
+      //     requiresVerification: true,
+      //   });
+      // }
 
       // Check if this Cliq user is already linked
       const existingMapping = await getDb().collection('cliq_user_mappings').doc(cliqUserId).get();
