@@ -200,6 +200,50 @@ class CliqService {
   }
 
   /**
+   * Get Tasker email for a given Cliq email
+   * If the Cliq user has linked their account, returns the Tasker email
+   * Otherwise returns null (caller should use the original Cliq email)
+   * 
+   * @param {string} cliqEmail - The email from Zoho Cliq
+   * @returns {Promise<{taskerEmail: string|null, taskerId: string|null, isLinked: boolean}>}
+   */
+  async getTaskerEmailByCliqEmail(cliqEmail) {
+    try {
+      if (!cliqEmail) {
+        return { taskerEmail: null, taskerId: null, isLinked: false };
+      }
+
+      // Query cliq_user_mappings where cliq_user_email matches
+      const mappingSnapshot = await this.db.collection('cliq_user_mappings')
+        .where('cliq_user_email', '==', cliqEmail.toLowerCase())
+        .where('is_active', '==', true)
+        .limit(1)
+        .get();
+
+      if (mappingSnapshot.empty) {
+        logger.debug('No linked Tasker account found for Cliq email', { cliqEmail });
+        return { taskerEmail: null, taskerId: null, isLinked: false };
+      }
+
+      const mappingData = mappingSnapshot.docs[0].data();
+      
+      logger.info('Found linked Tasker account for Cliq email', { 
+        cliqEmail, 
+        taskerEmail: mappingData.tasker_email 
+      });
+
+      return {
+        taskerEmail: mappingData.tasker_email || null,
+        taskerId: mappingData.tasker_user_id || null,
+        isLinked: true
+      };
+    } catch (error) {
+      logger.error('Error looking up Tasker email by Cliq email:', error);
+      return { taskerEmail: null, taskerId: null, isLinked: false };
+    }
+  }
+
+  /**
    * Format task card for Cliq
    */
   formatTaskCard(task) {

@@ -628,18 +628,36 @@ exports.listProjects = async (req, res) => {
 /**
  * Invite Member Command
  * POST /api/cliq/commands/invite-member
+ * 
+ * Smart email resolution:
+ * - If invitee has linked their Cliq to Tasker → use their Tasker email
+ * - If invitee is NOT linked → use their Cliq email as-is
  */
 exports.inviteMember = async (req, res) => {
   try {
-    const { projectId, email, role = 'editor', invitedBy, invitedByName, message } = req.body;
+    const { projectId, email: cliqEmail, role = 'editor', invitedBy, invitedByName, message } = req.body;
 
-    if (!projectId || !email || !invitedBy) {
+    if (!projectId || !cliqEmail || !invitedBy) {
       return res.status(400).json({
         success: false,
         message: '❌ Missing required fields',
         text: '❌ Please provide project ID, email, and inviter context'
       });
     }
+
+    // Smart email resolution: Check if invitee has linked their Cliq to Tasker
+    const linkedAccount = await cliqService.getTaskerEmailByCliqEmail(cliqEmail);
+    
+    // Use Tasker email if linked, otherwise use Cliq email
+    const email = linkedAccount.isLinked && linkedAccount.taskerEmail 
+      ? linkedAccount.taskerEmail 
+      : cliqEmail;
+    
+    logger.info('Invite member - email resolution', {
+      cliqEmail,
+      resolvedEmail: email,
+      isLinked: linkedAccount.isLinked
+    });
 
     // Check if project exists
     const projectDoc = await getDb().collection('projects').doc(projectId).get();
@@ -654,7 +672,7 @@ exports.inviteMember = async (req, res) => {
 
     const projectData = projectDoc.data();
 
-    // Check if invited user exists
+    // Check if invited user exists (using the resolved email)
     const userSnapshot = await getDb().collection('users')
       .where('email', '==', email.toLowerCase())
       .limit(1)
@@ -670,6 +688,7 @@ exports.inviteMember = async (req, res) => {
       invitedByUserId: invitedBy,
       invitedByUserName: invitedByName || 'User',
       invitedEmail: email.toLowerCase(),
+      cliqEmail: cliqEmail.toLowerCase(), // Store original Cliq email for reference
       invitedUserId: invitedUserId,
       status: 'pending',
       role,
@@ -695,7 +714,19 @@ exports.inviteMember = async (req, res) => {
         });
     }
 
-    logger.info(`Invitation sent to ${email} for project ${projectId}`);
+    logger.info(`Invitation sent to ${email} for project ${projectId}`, {
+      cliqEmail,
+      resolvedEmail: email,
+      wasLinked: linkedAccount.isLinked
+    });
+
+    // Build response message
+    let responseText = `✅ Invitation sent to ${email} for project "${projectData.name}"`;
+    
+    // If email was resolved from linked account, mention it
+    if (linkedAccount.isLinked && linkedAccount.taskerEmail && cliqEmail.toLowerCase() !== email.toLowerCase()) {
+      responseText = `✅ Invitation sent to *${email}* (Tasker account linked to ${cliqEmail}) for project "${projectData.name}"`;
+    }
 
     res.status(201).json({
       success: true,
@@ -703,10 +734,12 @@ exports.inviteMember = async (req, res) => {
       data: {
         id: invitationRef.id,
         email,
+        cliqEmail,
         projectName: projectData.name,
-        role
+        role,
+        wasLinked: linkedAccount.isLinked
       },
-      text: `✅ Invitation sent to ${email} for project "${projectData.name}"`
+      text: responseText
     });
 
   } catch (error) {
