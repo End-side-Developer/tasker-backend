@@ -256,6 +256,8 @@ class NLPService {
         `• "Good morning" - Daily briefing\n` +
         `• "My stats" - View productivity\n` +
         `• "Show projects" - List projects\n\n` +
+        `📘 *Full Command Reference:*\n` +
+        `https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n` +
         `💡 _Just chat naturally - I'll understand!_`,
       buttons: [
         {
