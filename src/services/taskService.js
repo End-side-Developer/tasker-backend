@@ -249,13 +249,23 @@ class TaskService {
         updateData.reminderEnabled = parseBoolean(updateData.reminderEnabled, true);
       }
 
+      // Track new assignees for notifications
+      let newAssigneeIds = [];
+      
       if (updateData.assignees !== undefined) {
         const assignees = sanitizeStringArray(updateData.assignees);
         updateData.assignees = assignees;
         if (assignees.length > 0 && !updateData.assignedAt) {
           updateData.assignedAt = admin.firestore.FieldValue.serverTimestamp();
         }
-        // Note: Assignee changes are complex to diff cleanly in text, skipping for now
+        
+        // Detect newly added assignees
+        const oldAssignees = new Set(oldTask.assignees || []);
+        newAssigneeIds = assignees.filter(id => !oldAssignees.has(id));
+        
+        if (newAssigneeIds.length > 0) {
+          changes.push(`Assigned to ${newAssigneeIds.length} new user(s)`);
+        }
       }
 
       if (updateData.recurrencePattern !== undefined) {
@@ -300,10 +310,21 @@ class TaskService {
       if (changes.length > 0 && updateData.status !== 'completed') {
         const newTask = { ...oldTask, ...updateData, id: taskId };
 
-        // Notify assignees
-        for (const assigneeId of (newTask.assignees || [])) {
-          // Don't notify the person who made the update (if we knew who it was, but we don't here easily)
-          // For now, we notify everyone assigned
+        // Send task_assigned notification to NEWLY added assignees
+        if (newAssigneeIds.length > 0) {
+          const assignerName = await cliqNotifier.getUserName(oldTask.createdBy);
+          for (const assigneeId of newAssigneeIds) {
+            await cliqNotifier.notifyUser(assigneeId, {
+              type: 'task_assigned',
+              task: newTask,
+              assignedBy: assignerName
+            });
+          }
+        }
+
+        // Send task_updated notification to existing assignees (not new ones)
+        const existingAssigneeIds = (newTask.assignees || []).filter(id => !newAssigneeIds.includes(id));
+        for (const assigneeId of existingAssigneeIds) {
           await cliqNotifier.notifyUser(assigneeId, {
             type: 'task_updated',
             task: newTask,

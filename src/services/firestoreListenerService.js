@@ -15,6 +15,8 @@ class FirestoreListenerService {
     this._db = null;
     this._listeners = [];
     this._initialized = false;
+    // Cache for tracking previous task states (for detecting assignee changes)
+    this._taskCache = new Map();
   }
 
   get db() {
@@ -67,14 +69,23 @@ class FirestoreListenerService {
             if (change.type === 'added') {
               // Skip if this is initial load (task created before listener started)
               if (task.createdAt && this.isOlderThan(task.createdAt, 30)) {
+                // Still cache it for future comparisons
+                this._taskCache.set(taskId, { assignees: task.assignees || [] });
                 return;
               }
               await this.handleTaskCreated(taskId, task);
+              // Cache the new task's assignees
+              this._taskCache.set(taskId, { assignees: task.assignees || [] });
             } else if (change.type === 'modified') {
-              // Get previous data from cache or compare
-              await this.handleTaskUpdated(taskId, task, change.doc);
+              // Get previous data from cache for comparison
+              const previousData = this._taskCache.get(taskId);
+              await this.handleTaskUpdated(taskId, task, change.doc, previousData);
+              // Update cache with new assignees
+              this._taskCache.set(taskId, { assignees: task.assignees || [] });
             } else if (change.type === 'removed') {
               await this.handleTaskDeleted(taskId, task);
+              // Remove from cache
+              this._taskCache.delete(taskId);
             }
           } catch (error) {
             logger.error(`Error handling task ${change.type}:`, error);
@@ -217,8 +228,30 @@ class FirestoreListenerService {
     }
   }
 
-  async handleTaskUpdated(taskId, task, docSnapshot) {
+  async handleTaskUpdated(taskId, task, docSnapshot, previousData) {
     logger.info(`Task updated: ${taskId}`);
+
+    // Check for newly assigned users
+    if (previousData) {
+      const oldAssignees = new Set(previousData.assignees || []);
+      const newAssignees = (task.assignees || []).filter(id => !oldAssignees.has(id));
+
+      if (newAssignees.length > 0) {
+        logger.info(`Task ${taskId}: ${newAssignees.length} new assignee(s) detected`);
+        const assignerName = await cliqNotifier.getUserName(task.createdBy || task.updatedBy);
+
+        for (const assigneeId of newAssignees) {
+          // Skip if this is the person who updated the task
+          if (assigneeId === task.updatedBy) continue;
+
+          await cliqNotifier.notifyUser(assigneeId, {
+            type: 'task_assigned',
+            task: { id: taskId, ...task },
+            assignedBy: assignerName
+          });
+        }
+      }
+    }
 
     // Check for completion
     if (task.status === 'completed' && task.completedAt) {
@@ -245,10 +278,6 @@ class FirestoreListenerService {
         }
       }
     }
-
-    // Note: Field updates (priority, due date, etc.) are now handled in TaskService.updateTask
-    // to allow for proper diffing and notification generation.
-    // This listener primarily handles completion status changes.
   }
 
   async handleTaskDeleted(taskId, task) {
