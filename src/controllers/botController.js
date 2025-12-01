@@ -632,12 +632,12 @@ async function handleEditTask(taskerId, params) {
 
     // Return response with edit form button - task found!
     return {
-      text: `📝 **Edit Task: "${matchedTask.title}"**\n\n` +
+      text: `📝 *Edit Task: "${matchedTask.title}"*\n\n` +
         `Current details:\n` +
         `• Status: ${matchedTask.status || 'pending'}\n` +
         `• Priority: ${matchedTask.priority || 'medium'}\n` +
         (matchedTask.dueDate ? `• Due: ${nlpService.formatDate(matchedTask.dueDate)}\n` : '') +
-        `\nClick below to edit, or say **"done with ${matchedTask.title}"** to complete it:`,
+        `\nClick below to edit, or say *"done with ${matchedTask.title}"* to complete it:`,
       buttons: [
         {
           label: '✏️ Edit Task',
@@ -685,7 +685,7 @@ async function handleCreateTask(taskerId, params, userName) {
       priority: params.priority || 'medium',
     });
 
-    let responseText = `✅ **Task created!**\n\n📋 "${params.taskTitle}"`;
+    let responseText = `✅ *Task created!*\n\n📋 "${params.taskTitle}"`;
     
     if (params.dueDate) {
       responseText += `\n📅 Due: ${nlpService.formatDate(params.dueDate)}`;
@@ -780,7 +780,7 @@ async function handleListProjects(taskerId) {
     // Get projects - would need projectService
     // For now, return a placeholder
     return {
-      text: "📁 **Your Projects**\n\n" +
+      text: "📁 *Your Projects*\n\n" +
         "_Project listing coming soon!_\n\n" +
         "Use `/taskerproject list` to see your projects.",
       buttons: [
@@ -817,7 +817,7 @@ async function handleGetStats(taskerId) {
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return {
-      text: `📊 **Your Stats**\n\n` +
+      text: `📊 *Your Stats*\n\n` +
         `✅ Completed: ${completed}\n` +
         `⏳ Pending: ${pending}\n` +
         `📈 Completion Rate: ${completionRate}%\n\n` +
@@ -838,7 +838,7 @@ async function handleGetStats(taskerId) {
 async function handleAssignTask(taskerId, params) {
   // This would need additional user lookup functionality
   return {
-    text: "👥 **Task Assignment**\n\n" +
+    text: "👥 *Task Assignment*\n\n" +
       "To assign tasks, use the `/taskertask` command:\n" +
       "`/taskertask assign`\n\n" +
       "_Natural language assignment coming soon!_",

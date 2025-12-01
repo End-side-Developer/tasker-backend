@@ -180,7 +180,7 @@ exports.listTasks = async (req, res) => {
     if (priority) filterInfo += `Priority: ${priority} `;
     if (normalizedStatus) filterInfo += `Status: ${normalizedStatus} `;
     
-    let textResponse = `📋 **Tasks${filterInfo ? ' (' + filterInfo.trim() + ')' : ''} - ${tasks.length} found**\n\n`;
+    let textResponse = `📋 *Tasks${filterInfo ? ' (' + filterInfo.trim() + ')' : ''} - ${tasks.length} found*\n\n`;
     
     if (tasks.length === 0) {
       textResponse = priority 
@@ -967,12 +967,12 @@ exports.getProjectMembers = async (req, res) => {
     logger.info(`Listed ${memberDetails.length} members for project ${projectId}`);
 
     // Format response text
-    let textResponse = `👥 **${projectData.name}**\n\n`;
-    textResponse += `**Members (${memberDetails.length}):**\n\n`;
+    let textResponse = `👥 *${projectData.name}*\n\n`;
+    textResponse += `*Members (${memberDetails.length}):*\n\n`;
     
     memberDetails.forEach((member, index) => {
       const roleEmoji = member.role === 'owner' ? '👑' : member.role === 'editor' ? '✏️' : '👁️';
-      textResponse += `${index + 1}. ${roleEmoji} **${member.name}**\n`;
+      textResponse += `${index + 1}. ${roleEmoji} *${member.name}*\n`;
       textResponse += `   Email: ${member.email}\n`;
       textResponse += `   Role: ${member.role}\n\n`;
     });
@@ -1042,33 +1042,33 @@ exports.getTaskDetails = async (req, res) => {
     const taskData = taskDoc.data();
 
     // Format response text
-    let textResponse = `📋 **Task Details**\n\n`;
-    textResponse += `**Title:** ${taskData.title}\n\n`;
+    let textResponse = `📋 *Task Details*\n\n`;
+    textResponse += `*Title:* ${taskData.title}\n\n`;
     
     // Handle encrypted descriptions
     if (taskData.isDescriptionEncrypted) {
-      textResponse += `**Description:** 🔒 _Encrypted content - open in Tasker app to view_\n\n`;
+      textResponse += `*Description:* 🔒 _Encrypted content - open in Tasker app to view_\n\n`;
     } else if (taskData.description) {
-      textResponse += `**Description:** ${taskData.description}\n\n`;
+      textResponse += `*Description:* ${taskData.description}\n\n`;
     }
     
     const statusEmoji = taskData.status === 'completed' ? '✅' : taskData.status === 'inProgress' ? '🔄' : '📌';
-    textResponse += `**Status:** ${statusEmoji} ${taskData.status}\n\n`;
+    textResponse += `*Status:* ${statusEmoji} ${taskData.status}\n\n`;
     
     if (taskData.projectId) {
       const projectDoc = await getDb().collection('projects').doc(taskData.projectId).get();
       if (projectDoc.exists) {
-        textResponse += `**Project:** ${projectDoc.data().name}\n\n`;
+        textResponse += `*Project:* ${projectDoc.data().name}\n\n`;
       }
     }
     
     if (taskData.dueDate) {
       const dueDate = taskData.dueDate.toDate();
-      textResponse += `**Due Date:** ${dueDate.toLocaleDateString()}\n\n`;
+      textResponse += `*Due Date:* ${dueDate.toLocaleDateString()}\n\n`;
     }
     
     if (taskData.assignees && taskData.assignees.length > 0) {
-      textResponse += `**Assignees:** `;
+      textResponse += `*Assignees:* `;
       for (let i = 0; i < taskData.assignees.length; i++) {
         const assigneeDoc = await getDb().collection('users').doc(taskData.assignees[i]).get();
         if (assigneeDoc.exists) {
@@ -1082,16 +1082,16 @@ exports.getTaskDetails = async (req, res) => {
     
     if (taskData.createdAt) {
       const createdDate = taskData.createdAt.toDate();
-      textResponse += `**Created:** ${createdDate.toLocaleDateString()} at ${createdDate.toLocaleTimeString()}\n\n`;
+      textResponse += `*Created:* ${createdDate.toLocaleDateString()} at ${createdDate.toLocaleTimeString()}\n\n`;
     }
     
     if (taskData.completedAt) {
       const completedDate = taskData.completedAt.toDate();
-      textResponse += `**Completed:** ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}\n\n`;
+      textResponse += `*Completed:* ${completedDate.toLocaleDateString()} at ${completedDate.toLocaleTimeString()}\n\n`;
     }
     
     if (taskData.completionNotes) {
-      textResponse += `**Completion Notes:** ${taskData.completionNotes}\n\n`;
+      textResponse += `*Completion Notes:* ${taskData.completionNotes}\n\n`;
     }
 
     logger.info(`Retrieved task details for ${taskId}`);

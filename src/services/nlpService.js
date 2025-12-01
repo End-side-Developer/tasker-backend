@@ -236,23 +236,23 @@ class NLPService {
    */
   getHelpResponse() {
     return {
-      text: `🤖 **TaskerBot Commands**\n\n` +
-        `📋 **View Tasks**\n` +
+      text: `🤖 *TaskerBot Commands*\n\n` +
+        `📋 *View Tasks*\n` +
         `• "What's on my plate?"\n` +
         `• "Show my tasks"\n` +
         `• "Tasks for today"\n\n` +
-        `✅ **Complete Tasks**\n` +
+        `✅ *Complete Tasks*\n` +
         `• "I'm done with [task name]"\n` +
         `• "Mark [task] as complete"\n` +
         `• "Finished [task name]"\n\n` +
-        `✏️ **Edit Tasks**\n` +
+        `✏️ *Edit Tasks*\n` +
         `• "Edit [task name]"\n` +
         `• "Update [task name]"\n\n` +
-        `📝 **Create Tasks**\n` +
+        `📝 *Create Tasks*\n` +
         `• "Create a task [title]"\n` +
         `• "Remind me to [action] tomorrow at 5pm"\n` +
         `• "I need to [action] urgent"\n\n` +
-        `📊 **Other**\n` +
+        `📊 *Other*\n` +
         `• "Good morning" - Daily briefing\n` +
         `• "My stats" - View productivity\n` +
         `• "Show projects" - List projects\n\n` +
@@ -284,7 +284,7 @@ class NLPService {
     ];
     return {
       text: greetings[Math.floor(Math.random() * greetings.length)] +
-        "\n\nType **help** to see what I can do!",
+        "\n\nType *help* to see what I can do!",
     };
   }
 
@@ -293,9 +293,9 @@ class NLPService {
    */
   getUnknownResponse() {
     const responses = [
-      "🤔 I'm not sure what you mean. Try **help** to see what I can do!",
-      "Hmm, I didn't quite get that. Type **help** for available commands!",
-      "Sorry, I don't understand. Try asking differently or type **help**!",
+      "🤔 I'm not sure what you mean. Try *help* to see what I can do!",
+      "Hmm, I didn't quite get that. Type *help* for available commands!",
+      "Sorry, I don't understand. Try asking differently or type *help*!",
     ];
     return {
       text: responses[Math.floor(Math.random() * responses.length)],
@@ -315,11 +315,11 @@ class NLPService {
   getNotLinkedResponse() {
     return {
       text: "🔗 I don't recognize you yet!\n\n" +
-        "📲 **Don't have Tasker app?**\n" +
+        "📲 *Don't have Tasker app?*\n" +
         "Download: https://github.com/ashu-debuger/ESD-App-Download/releases/latest\n\n" +
-        "**To link your account:**\n" +
-        "1️⃣ Open **Tasker App → Settings → Zoho Cliq Integration**\n" +
-        "2️⃣ Tap **Generate Linking Code**\n" +
+        "*To link your account:*\n" +
+        "1️⃣ Open *Tasker App → Settings → Zoho Cliq Integration*\n" +
+        "2️⃣ Tap *Generate Linking Code*\n" +
         "3️⃣ Type `/tasker link <code>` with your code\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
     };
@@ -356,7 +356,7 @@ class NLPService {
       completed: '✅',
     };
 
-    let text = `📋 **Your Tasks** (${tasks.length})\n\n`;
+    let text = `📋 *Your Tasks* (${tasks.length})\n\n`;
 
     // Group tasks by project
     const personalTasks = tasks.filter(t => !t.projectName);
@@ -374,7 +374,7 @@ class NLPService {
 
     // Show personal tasks first
     if (personalTasks.length > 0) {
-      text += `**📁 Personal**\n`;
+      text += `*📁 Personal*\n`;
       personalTasks.slice(0, 5).forEach(task => {
         const emoji = priorityEmoji[task.priority] || '📋';
         const status = statusEmoji[task.status] || '⬜';
@@ -390,7 +390,7 @@ class NLPService {
     // Show project tasks grouped by project
     Object.keys(tasksByProject).slice(0, 3).forEach(projectName => {
       const projectTaskList = tasksByProject[projectName];
-      text += `**📂 ${projectName}**\n`;
+      text += `*📂 ${projectName}*\n`;
       projectTaskList.slice(0, 3).forEach(task => {
         const emoji = priorityEmoji[task.priority] || '📋';
         const status = statusEmoji[task.status] || '⬜';
@@ -434,11 +434,11 @@ class NLPService {
   formatBriefing(data) {
     const { dueToday = [], overdue = [], totalPending = 0 } = data;
 
-    let text = "☀️ **Good Morning! Here's your briefing:**\n\n";
+    let text = "☀️ *Good Morning! Here's your briefing:*\n\n";
 
     // Overdue tasks
     if (overdue.length > 0) {
-      text += `⚠️ **Overdue** (${overdue.length})\n`;
+      text += `⚠️ *Overdue* (${overdue.length})\n`;
       overdue.slice(0, 3).forEach(task => {
         text += `   🔴 ${task.title}\n`;
       });
@@ -450,18 +450,18 @@ class NLPService {
 
     // Due today
     if (dueToday.length > 0) {
-      text += `📅 **Due Today** (${dueToday.length})\n`;
+      text += `📅 *Due Today* (${dueToday.length})\n`;
       dueToday.forEach(task => {
         const emoji = task.priority === 'high' ? '🔥' : '📋';
         text += `   ${emoji} ${task.title}\n`;
       });
       text += '\n';
     } else {
-      text += "📅 **Due Today**: Nothing due! 🎉\n\n";
+      text += "📅 *Due Today*: Nothing due! 🎉\n\n";
     }
 
     // Summary
-    text += `📊 **Total Pending**: ${totalPending} tasks\n\n`;
+    text += `📊 *Total Pending*: ${totalPending} tasks\n\n`;
 
     if (overdue.length > 0) {
       text += "💪 _Let's tackle those overdue tasks first!_";
