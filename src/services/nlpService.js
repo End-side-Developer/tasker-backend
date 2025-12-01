@@ -323,6 +323,8 @@ class NLPService {
         "1️⃣ Open *Tasker App → Settings → Zoho Cliq Integration*\n" +
         "2️⃣ Tap *Generate Linking Code*\n" +
         "3️⃣ Type `/tasker link <code>` with your code\n\n" +
+        "📘 *Full Command Reference:*\n" +
+        "https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
     };
   }
