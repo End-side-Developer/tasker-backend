@@ -256,8 +256,8 @@ class NLPService {
         `• "Good morning" - Daily briefing\n` +
         `• "My stats" - View productivity\n` +
         `• "Show projects" - List projects\n\n` +
-        `📘 *Full Command Reference:*\n` +
-        `https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n` +
+        `📖 *Documentation:* https://github.com/ashu-debuger/ESD-App-Download#readme\n` +
+        `📘 *Commands:* https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n` +
         `💡 _Just chat naturally - I'll understand!_`,
       buttons: [
         {
@@ -318,13 +318,13 @@ class NLPService {
     return {
       text: "🔗 I don't recognize you yet!\n\n" +
         "📲 *Don't have Tasker app?*\n" +
-        "Download: https://github.com/ashu-debuger/ESD-App-Download/releases/latest\n\n" +
+        "Download: https://github.com/ashu-debuger/ESD-App-Download/releases/latest\n" +
+        "📖 Docs: https://github.com/ashu-debuger/ESD-App-Download#readme\n\n" +
         "*To link your account:*\n" +
         "1️⃣ Open *Tasker App → Settings → Zoho Cliq Integration*\n" +
         "2️⃣ Tap *Generate Linking Code*\n" +
         "3️⃣ Type `/tasker link <code>` with your code\n\n" +
-        "📘 *Full Command Reference:*\n" +
-        "https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n" +
+        "📘 *Commands:* https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md\n\n" +
         "Once linked, I'll be able to help you manage your tasks!",
     };
   }
