@@ -8,6 +8,38 @@ const logger = require('../config/logger');
 // Get Firestore instance (lazy initialization)
 const getDb = () => admin.firestore();
 
+/**
+ * Check if user is a member of a project (any role)
+ * In Cliq, all project members have full access regardless of role
+ * @param {string} projectId - Project document ID
+ * @param {string} cliqUserId - Cliq user ID
+ * @param {string} cliqEmail - Cliq user email (optional)
+ * @returns {Promise<{isMember: boolean, firebaseUserId: string|null, projectData: object|null}>}
+ */
+const checkProjectMembership = async (projectId, cliqUserId, cliqEmail = null) => {
+  if (!projectId) {
+    return { isMember: true, firebaseUserId: null, projectData: null }; // Personal task, no project
+  }
+
+  const projectRef = getDb().collection('projects').doc(projectId);
+  const projectDoc = await projectRef.get();
+
+  if (!projectDoc.exists) {
+    return { isMember: false, firebaseUserId: null, projectData: null, error: 'Project not found' };
+  }
+
+  const projectData = projectDoc.data();
+  
+  // Get Firebase user ID from Cliq mapping
+  let firebaseUserId = await cliqService.mapCliqUserToTasker(cliqUserId, cliqEmail);
+  
+  // Check membership with both IDs
+  const memberIds = new Set(projectData.members || []);
+  const isMember = memberIds.has(cliqUserId) || (firebaseUserId && memberIds.has(firebaseUserId));
+
+  return { isMember, firebaseUserId, projectData, projectId };
+};
+
 const normalizeStatusFilter = (status) => {
   if (!status) return undefined;
   const lower = status.toString().toLowerCase();
@@ -52,8 +84,26 @@ exports.createTask = async (req, res) => {
       });
     }
 
+    // Check project membership if creating task in a project
+    if (projectId) {
+      const membership = await checkProjectMembership(projectId, cliqContext.userId, cliqContext.userEmail);
+      if (membership.error) {
+        return res.status(404).json({
+          success: false,
+          message: `❌ ${membership.error}`,
+          text: `❌ ${membership.error}`
+        });
+      }
+      if (!membership.isMember) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ You must be a project member to create tasks',
+          text: '❌ You are not a member of this project'
+        });
+      }
+    }
+
     // Try to get mapped Firebase user ID first
-    const cliqService = require('../services/cliqService');
     let firebaseUserId = await cliqService.mapCliqUserToTasker(cliqContext.userId);
     
     // If no mapping exists and email provided, try to find by email
@@ -230,7 +280,7 @@ exports.listTasks = async (req, res) => {
  */
 exports.assignTask = async (req, res) => {
   try {
-    const { taskId, assignedTo, assignedToName, assignedBy, assignedByName } = req.body;
+    const { taskId, assignedTo, assignedToName, assignedBy, assignedByName, assignedByEmail } = req.body;
 
     if (!taskId || !assignedTo) {
       return res.status(400).json({
@@ -265,6 +315,20 @@ exports.assignTask = async (req, res) => {
       });
     }
 
+    const taskData = taskDoc.data();
+
+    // Check project membership if task belongs to a project
+    if (taskData.projectId && assignedBy) {
+      const membership = await checkProjectMembership(taskData.projectId, assignedBy, assignedByEmail);
+      if (!membership.isMember) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ You must be a project member to assign tasks',
+          text: '❌ You are not a member of this project'
+        });
+      }
+    }
+
     // Use Tasker user ID (not Cliq ID) for assignees
     await taskRef.update({
       assignees: admin.firestore.FieldValue.arrayUnion(taskerAssigneeId),
@@ -272,8 +336,6 @@ exports.assignTask = async (req, res) => {
       assignedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
-    const taskData = taskDoc.data();
 
     logger.info(`Task ${taskId} assigned to Tasker user ${taskerAssigneeId} (Cliq: ${assignedTo}) via Cliq`);
 
@@ -313,7 +375,7 @@ exports.assignTask = async (req, res) => {
  */
 exports.completeTask = async (req, res) => {
   try {
-    const { taskId, completedBy, completedByName, notes } = req.body;
+    const { taskId, completedBy, completedByName, completedByEmail, notes } = req.body;
 
     if (!taskId) {
       return res.status(400).json({
@@ -334,6 +396,20 @@ exports.completeTask = async (req, res) => {
       });
     }
 
+    const taskData = taskDoc.data();
+
+    // Check project membership if task belongs to a project
+    if (taskData.projectId && completedBy) {
+      const membership = await checkProjectMembership(taskData.projectId, completedBy, completedByEmail);
+      if (!membership.isMember) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ You must be a project member to complete tasks',
+          text: '❌ You are not a member of this project'
+        });
+      }
+    }
+
     await taskRef.update({
       status: 'completed',
       completedBy: completedBy || 'unknown',
@@ -342,8 +418,6 @@ exports.completeTask = async (req, res) => {
       completionNotes: notes || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-
-    const taskData = taskDoc.data();
 
     logger.info(`Task ${taskId} completed via Cliq by ${completedByName}`);
 
@@ -635,13 +709,30 @@ exports.listProjects = async (req, res) => {
  */
 exports.inviteMember = async (req, res) => {
   try {
-    const { projectId, email: cliqEmail, role = 'editor', invitedBy, invitedByName, message } = req.body;
+    const { projectId, email: cliqEmail, role = 'editor', invitedBy, invitedByName, invitedByEmail, message } = req.body;
 
     if (!projectId || !cliqEmail || !invitedBy) {
       return res.status(400).json({
         success: false,
         message: '❌ Missing required fields',
         text: '❌ Please provide project ID, email, and inviter context'
+      });
+    }
+
+    // Check project membership - only members can invite
+    const membership = await checkProjectMembership(projectId, invitedBy, invitedByEmail);
+    if (membership.error) {
+      return res.status(404).json({
+        success: false,
+        message: `❌ ${membership.error}`,
+        text: `❌ ${membership.error}`
+      });
+    }
+    if (!membership.isMember) {
+      return res.status(403).json({
+        success: false,
+        message: '❌ You must be a project member to invite others',
+        text: '❌ You are not a member of this project'
       });
     }
 
@@ -659,18 +750,7 @@ exports.inviteMember = async (req, res) => {
       isLinked: linkedAccount.isLinked
     });
 
-    // Check if project exists
-    const projectDoc = await getDb().collection('projects').doc(projectId).get();
-    
-    if (!projectDoc.exists) {
-      return res.status(404).json({
-        success: false,
-        message: '❌ Project not found',
-        text: `❌ Project not found`
-      });
-    }
-
-    const projectData = projectDoc.data();
+    const projectData = membership.projectData;
 
     // Check if invited user exists (using the resolved email)
     const userSnapshot = await getDb().collection('users')
@@ -1178,6 +1258,19 @@ exports.deleteTask = async (req, res) => {
     }
 
     const taskData = taskDoc.data();
+
+    // Check project membership if task belongs to a project
+    if (taskData.projectId && requestedBy) {
+      const membership = await checkProjectMembership(taskData.projectId, requestedBy, requestedByEmail);
+      if (!membership.isMember) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ You must be a project member to delete tasks',
+          text: '❌ You are not a member of this project'
+        });
+      }
+    }
+
     await taskRef.delete();
 
     logger.info(`Task ${taskId} deleted via Cliq by ${requestedByName || requestedBy}`);

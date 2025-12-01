@@ -322,6 +322,31 @@ exports.updateTask = async (req, res) => {
       return res.json({ success: false, error: 'Account not linked. Use /tasker link first.' });
     }
 
+    // Get task to check project membership
+    const { admin } = require('../config/firebase');
+    const db = admin.firestore();
+    const taskDoc = await db.collection('tasks').doc(taskId).get();
+    
+    if (!taskDoc.exists) {
+      return res.json({ success: false, error: 'Task not found' });
+    }
+
+    const taskData = taskDoc.data();
+
+    // Check project membership if task belongs to a project
+    if (taskData.projectId) {
+      const projectDoc = await db.collection('projects').doc(taskData.projectId).get();
+      if (projectDoc.exists) {
+        const projectData = projectDoc.data();
+        const memberIds = new Set(projectData.members || []);
+        const isMember = memberIds.has(userId) || memberIds.has(taskerId);
+        
+        if (!isMember) {
+          return res.json({ success: false, error: 'You are not a member of this project' });
+        }
+      }
+    }
+
     // Build updates object
     const updates = {};
     
