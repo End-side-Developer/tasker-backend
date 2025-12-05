@@ -214,9 +214,30 @@ class NLPService {
         };
 
       case 'assign_task':
+        // Support multiple phrasings:
+        // 1) assign "task" to @user
+        // 2) give "task" to @user
+        // 3) @user should/needs to/can you task
+        const directAssign = fullMessage.match(/(?:assign|give) ['"]?(.+?)['"]? to @?([\w.-]+)/i);
+        const leadingUser = fullMessage.match(/@([\w.-]+)\s+(?:should|needs to|can you|could you)?\s+(.+)/i);
+
+        if (directAssign) {
+          return {
+            taskName: directAssign[1] ? directAssign[1].trim() : null,
+            assignee: directAssign[2] ? directAssign[2].trim() : null,
+          };
+        }
+
+        if (leadingUser) {
+          return {
+            taskName: leadingUser[2] ? leadingUser[2].trim() : null,
+            assignee: leadingUser[1] ? leadingUser[1].trim() : null,
+          };
+        }
+
         return {
-          taskName: match[1] ? match[1].trim() : (match[3] ? match[3].trim() : null),
-          assignee: match[2] ? match[2].trim() : null,
+          taskName: match[3] ? match[3].trim() : null,
+          assignee: match[1] ? match[1].trim() : null,
         };
 
       case 'list_tasks':
@@ -305,7 +326,12 @@ class NLPService {
         {
           label: '❓ Help',
           type: '+',
-          action: { type: 'invoke.function', data: { name: 'botShowHelp' } },
+          action: {
+            type: 'open.url',
+            data: {
+              web: 'https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md'
+            }
+          },
         },
       ],
     };

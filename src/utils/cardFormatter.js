@@ -130,10 +130,9 @@ exports.formatProjectCard = (project, action = 'created') => {
       label: 'Add Task',
       type: '+',
       action: {
-        type: 'invoke.function',
+        type: 'open.url',
         data: {
-          name: 'addTask',
-          projectId: project.projectId
+          web: 'https://github.com/ashu-debuger/ESD-App-Download/blob/main/COMMANDS.md'
         }
       }
     }

@@ -861,11 +861,96 @@ async function handleGetStats(taskerId) {
  * Handle assign task intent
  */
 async function handleAssignTask(taskerId, params) {
-  // This would need additional user lookup functionality
-  return {
-    text: "👥 *Task Assignment*\n\n" +
-      "To assign tasks, use the `/taskertask` command:\n" +
-      "`/taskertask assign`\n\n" +
-      "_Natural language assignment coming soon!_",
-  };
+  try {
+    if (!params.taskName || !params.assignee) {
+      return {
+        text: "👥 *Task Assignment*\n\n" +
+          "Please specify both the task and the person.\n" +
+          "Example: `assign design review to @alex`",
+      };
+    }
+
+    const tasks = await taskService.listTasks({ assignee: taskerId });
+    const matchedTask = nlpService.findMatchingTask(tasks, params.taskName);
+
+    if (!matchedTask) {
+      const sample = tasks.slice(0, 5).map(t => `• ${t.title}`).join('\n');
+      return {
+        text: `🔍 I couldn't find a task matching "${params.taskName}"\n\n` +
+          (sample ? `Your tasks:\n${sample}` : 'You have no tasks to assign right now.'),
+      };
+    }
+
+    const assigneeHandle = params.assignee.replace(/^@/, '').trim();
+    const assigneeId = await findTaskerUserIdByCliqHandle(assigneeHandle);
+
+    if (!assigneeId) {
+      return {
+        text: "❌ I couldn't find that person in Tasker.\n" +
+          "They may need to link their account first using `/tasker link <code>`.\n\n" +
+          "You can also assign via slash command: `/taskertask assign <task_id> <email>`.",
+      };
+    }
+
+    const currentAssignees = Array.isArray(matchedTask.assignees) ? matchedTask.assignees : [];
+    const alreadyAssigned = currentAssignees.includes(assigneeId);
+
+    if (alreadyAssigned) {
+      return {
+        text: `ℹ️ ${params.assignee} is already assigned to "${matchedTask.title}".`,
+      };
+    }
+
+    const updatedAssignees = [...new Set([...currentAssignees, assigneeId])];
+    await taskService.updateTask(matchedTask.id, {
+      assignees: updatedAssignees,
+      assignedBy: taskerId,
+    });
+
+    return {
+      text: `✅ Assigned "${matchedTask.title}" to ${params.assignee}.`,
+    };
+
+  } catch (error) {
+    logger.error('Error assigning task via bot:', error);
+    return {
+      text: "😅 I couldn't assign that task. Please try again or use `/taskertask assign`.",
+    };
+  }
+}
+
+async function findTaskerUserIdByCliqHandle(handle) {
+  // Attempt to resolve by stored Cliq username in mapping collection
+  try {
+    const snapshot = await cliqService.db
+      .collection('cliq_user_mappings')
+      .where('cliq_user_name', '==', handle)
+      .where('is_active', '==', true)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      // Fallback: try case-insensitive by scanning small set
+      const lowerHandle = handle.toLowerCase();
+      const altSnapshot = await cliqService.db
+        .collection('cliq_user_mappings')
+        .where('is_active', '==', true)
+        .limit(20)
+        .get();
+
+      const match = altSnapshot.docs.find(doc => {
+        const data = doc.data();
+        return data.cliq_user_name && data.cliq_user_name.toLowerCase() === lowerHandle;
+      });
+
+      return match ? match.data().tasker_user_id || null : null;
+    }
+
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    return data.tasker_user_id || null;
+  } catch (error) {
+    logger.error('Error resolving assignee handle', { handle, error });
+    return null;
+  }
 }
