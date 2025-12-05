@@ -2,283 +2,228 @@
 
 Node.js backend for Tasker Zoho Cliq integration. Provides REST API endpoints for task management and handles bidirectional synchronization with Zoho Cliq.
 
+---
+
+## 📚 Documentation
+
+**[→ Full Documentation](./docs/README.md)**
+
+| Quick Links                                                        |                        |
+| ------------------------------------------------------------------ | ---------------------- |
+| [🚀 Quick Start](./docs/getting-started/quick-start.md)             | Get running in minutes |
+| [🔧 Environment Setup](./docs/getting-started/environment-setup.md) | Configure .env         |
+| [🔌 API Reference](./docs/api/overview.md)                          | Endpoints & usage      |
+| [🔗 Zoho Cliq Guide](./docs/zoho-cliq/overview.md)                  | Cliq integration       |
+
+---
+
 ## 🚀 Features
 
 - **Task Management API** - Create, read, update, delete tasks
-- **Zoho Cliq Integration** - Slash commands, webhooks, notifications
+- **Zoho Cliq Integration** - Slash commands, bot, webhooks, widgets
 - **Firebase Backend** - Firestore database integration
 - **User Mapping** - Link Cliq users to Tasker accounts
 - **Dual Authentication** - API key + OAuth 2.0 with JWT tokens
 - **Security** - Rate limiting, input validation, CORS protection
-- **Logging** - Winston logger with file and console output
-- **Error Handling** - Comprehensive error handling middleware
+
+---
 
 ## 📁 Project Structure
 
 ```
 Tasker Backend/
 ├── src/
-│   ├── config/           # Configuration files
-│   │   ├── firebase.js   # Firebase initialization
-│   │   ├── oauth.js      # OAuth 2.0 configuration
-│   │   ├── jwt.js        # JWT token management
-│   │   └── logger.js     # Winston logger setup
-│   ├── controllers/      # Request handlers
-│   │   ├── taskController.js
-│   │   ├── cliqController.js
-│   │   └── authController.js  # OAuth endpoints
-│   ├── middleware/       # Express middleware
-│   │   ├── auth.js       # API key + JWT verification
-│   │   ├── errorHandler.js
-│   │   └── rateLimiter.js
-│   ├── routes/          # API routes
-│   │   ├── index.js
-│   │   ├── taskRoutes.js
-│   │   ├── cliqRoutes.js
-│   │   └── authRoutes.js     # Authentication routes
-│   ├── services/        # Business logic
-│   │   ├── taskService.js
-│   │   └── cliqService.js
-│   ├── utils/           # Utility functions
-│   │   └── validators.js
-│   └── server.js        # Entry point
-├── docs/                # Documentation
-│   ├── API_INTEGRATION.md
-│   ├── OAUTH_SETUP.md
-│   └── OAUTH_IMPLEMENTATION.md
-├── logs/                # Log files (auto-generated)
-├── .env                 # Environment variables
-├── .env.example         # Environment template
-├── .gitignore
-├── package.json
-└── README.md
+│   ├── server.js           # Entry point
+│   ├── config/             # Firebase, OAuth, JWT, Logger
+│   ├── controllers/        # Request handlers
+│   ├── middleware/         # Auth, rate limit, errors
+│   ├── routes/             # API routes
+│   └── services/           # Business logic
+├── cliq-scripts/           # Zoho Cliq Deluge scripts
+├── docs/                   # Documentation
+│   ├── getting-started/    # Setup guides
+│   ├── api/                # API reference
+│   ├── zoho-cliq/          # Cliq integration
+│   ├── architecture/       # Technical docs
+│   └── development/        # Dev guides
+├── __tests__/              # Jest tests
+└── logs/                   # Log files
 ```
 
-## 🛠️ Setup Instructions
+---
 
-### 1. Install Dependencies
+## ⚡ Quick Start
 
 ```bash
-cd "Tasker Backend"
+# 1. Install dependencies
 npm install
-```
 
-### 2. Configure Environment
-
-Copy `.env.example` to `.env` and fill in your values:
-
-```bash
+# 2. Configure environment
 cp .env.example .env
-```
+# Edit .env with your values
 
-Required environment variables:
-- `FIREBASE_PROJECT_ID` - Your Firebase project ID
-- `FIREBASE_PRIVATE_KEY` - Firebase service account private key
-- `FIREBASE_CLIENT_EMAIL` - Firebase service account email
-- `CLIQ_WEBHOOK_URL` - Zoho Cliq incoming webhook URL
-- `API_SECRET_KEY` - Secret key for API authentication
-
-### 3. Firebase Setup
-
-Option A: Use service account file
-1. Download your Firebase service account JSON file
-2. Save it as `serviceAccountKey.json` in the project root
-3. Set `FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccountKey.json` in `.env`
-
-Option B: Use environment variables
-1. Extract values from service account JSON
-2. Set them in `.env` (see `.env.example`)
-
-### 4. Start the Server
-
-Development mode (with auto-reload):
-```bash
+# 3. Start development server
 npm run dev
+
+# Server runs at http://localhost:3000
 ```
 
-Production mode:
-```bash
-npm start
+See [Quick Start Guide](./docs/getting-started/quick-start.md) for details.
+
+---
+
+## 🔧 Environment Variables
+
+Key variables (see [Environment Setup](./docs/getting-started/environment-setup.md)):
+
+```env
+# Server
+PORT=3000
+NODE_ENV=development
+
+# Firebase
+FIREBASE_PROJECT_ID=your-project
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----..."
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@...
+
+# Auth
+API_SECRET_KEY=your-api-key
+JWT_SECRET=your-jwt-secret
+
+# Zoho
+ZOHO_CLIENT_ID=1000.xxx
+ZOHO_CLIENT_SECRET=xxx
 ```
+
+---
 
 ## 📡 API Endpoints
 
-### Health Check
+| Method | Endpoint                  | Description          |
+| ------ | ------------------------- | -------------------- |
+| GET    | `/api/health`             | Health check         |
+| POST   | `/api/tasks`              | Create task          |
+| GET    | `/api/tasks`              | List tasks           |
+| GET    | `/api/tasks/:id`          | Get task             |
+| PUT    | `/api/tasks/:id`          | Update task          |
+| POST   | `/api/tasks/:id/complete` | Complete task        |
+| DELETE | `/api/tasks/:id`          | Delete task          |
+| POST   | `/api/cliq/link-user`     | Link Cliq user       |
+| POST   | `/api/cliq/command`       | Handle slash command |
+| GET    | `/api/cliq/widget`        | Get widget data      |
+
+See [API Reference](./docs/api/overview.md) for full documentation.
+
+---
+
+## 🔐 Authentication
+
 ```http
-GET /api/health
+# API Key (for Cliq, server-to-server)
+x-api-key: YOUR_API_KEY
+
+# Bearer Token (for Flutter app)
+Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
-### Tasks
+See [Authentication Guide](./docs/api/authentication.md).
 
-**Create Task**
-```http
-POST /api/tasks
-Headers: x-api-key: YOUR_API_KEY
-Body: {
-  "title": "Fix bug",
-  "description": "Description here",
-  "priority": "high",
-  "cliqContext": {
-    "userId": "cliq_user_123",
-    "userName": "John Doe"
-  }
-}
-```
+---
 
-**List Tasks**
-```http
-GET /api/tasks?cliqUserId=cliq_user_123&status=pending
-Headers: x-api-key: YOUR_API_KEY
-```
+## 🔗 Zoho Cliq Integration
 
-**Get Task**
-```http
-GET /api/tasks/:id
-Headers: x-api-key: YOUR_API_KEY
-```
+> ⚠️ **Note**: Zoho Cliq has a **20 function limit** per extension. Some features documented here may not be visible in Cliq due to this limitation. Please check the **Tasker extension** in Zoho Cliq Developer Console for the current implementation status.
 
-**Update Task**
-```http
-PUT /api/tasks/:id
-Headers: x-api-key: YOUR_API_KEY
-Body: {
-  "status": "completed",
-  "priority": "medium"
-}
-```
+### Active Functions (20/20)
 
-**Complete Task**
-```http
-POST /api/tasks/:id/complete
-Headers: x-api-key: YOUR_API_KEY
-Body: {
-  "completedBy": "user_123"
-}
-```
+| Category     | Function               | Description           |
+| ------------ | ---------------------- | --------------------- |
+| **Bot**      | `botWelcome`           | Welcome message       |
+|              | `botListTasks`         | List user's tasks     |
+|              | `botViewTask`          | View task details     |
+| **Widget**   | `widgetViewTasks`      | Personal tasks view   |
+|              | `widgetViewProjects`   | Projects grouped view |
+| **Tasks**    | `createTask`           | Create new task       |
+|              | `showCreateTaskForm`   | Show create form      |
+|              | `submitCreateTask`     | Handle form submit    |
+|              | `getTaskDetails`       | Get task info         |
+|              | `editTaskForm`         | Edit task form        |
+|              | `updateTask`           | Update task           |
+|              | `completeTask`         | Mark complete         |
+|              | `deleteTask`           | Delete task           |
+|              | `assignTask`           | Assign to user        |
+| **Projects** | `createProject`        | Create project        |
+|              | `getProjectDetails`    | Get project info      |
+|              | `getProjectMembers`    | List members          |
+|              | `inviteMember`         | Invite to project     |
+| **Account**  | `linkAccount`          | Link Cliq ↔ Tasker    |
+|              | `confirmUnlinkAccount` | Unlink account        |
 
-**Delete Task**
-```http
-DELETE /api/tasks/:id
-Headers: x-api-key: YOUR_API_KEY
-```
+### Feature Status
 
-### Cliq Integration
+| Feature               | Status   | Notes                        |
+| --------------------- | -------- | ---------------------------- |
+| Slash Commands        | ✅ Active | `/tasker`                    |
+| TaskerBot             | ✅ Active | Welcome, list, view          |
+| Home Widget           | ✅ Active | Tasks & projects tabs        |
+| Task CRUD             | ✅ Active | Full operations              |
+| Project Management    | ✅ Active | Create, view, members        |
+| Account Linking       | ✅ Active | Link/unlink                  |
+| Notifications         | ⏸️ Paused | Requires extra functions     |
+| Scheduled Automations | ⏸️ Paused | Requires scheduler functions |
+| Message Actions       | ⏸️ Paused | Requires extra functions     |
 
-**Link User**
-```http
-POST /api/cliq/link-user
-Headers: x-api-key: YOUR_API_KEY
-Body: {
-  "cliqUserId": "cliq_user_123",
-  "cliqUserName": "John Doe",
-  "taskerUserId": "tasker_user_456"
-}
-```
+See [Zoho Cliq Guide](./docs/zoho-cliq/overview.md).
 
-**Get User Mapping**
-```http
-GET /api/cliq/user/:cliqUserId
-Headers: x-api-key: YOUR_API_KEY
-```
-
-**Webhook Handler**
-```http
-POST /api/cliq/webhook
-Headers: x-api-key: YOUR_API_KEY
-Body: {
-  "event": "task.completed",
-  "data": { ... }
-}
-```
-
-## 🔐 Security
-
-- **API Key Authentication**: All endpoints require `x-api-key` header
-- **Rate Limiting**: 100 requests per 15 minutes per IP
-- **Input Validation**: All inputs validated with express-validator
-- **Helmet.js**: Security headers enabled
-- **CORS**: Cross-origin requests enabled
-
-## 📊 Logging
-
-Logs are written to:
-- `logs/error.log` - Error-level logs
-- `logs/combined.log` - All logs
-- Console - Development mode
+---
 
 ## 🧪 Testing
 
-Run tests:
 ```bash
+# Run all tests
 npm test
+
+# Watch mode
+npm test -- --watch
+
+# Coverage
+npm test -- --coverage
 ```
 
-## 🔄 Integration with Zoho Cliq
-
-### Step 1: Get Your API Key
-The API key is set in `.env` as `API_SECRET_KEY`
-
-### Step 2: Update Cliq Extension
-In your Zoho Cliq slash command handler, use this to call the API:
-
-```deluge
-// Call Tasker Backend API
-taskData = {
-    "title": title,
-    "description": description,
-    "priority": "medium",
-    "cliqContext": {
-        "userId": user.get("id"),
-        "userName": user.get("name"),
-        "channelId": chat.get("id"),
-        "source": "slash_command"
-    }
-};
-
-headers = {
-    "x-api-key": "YOUR_API_SECRET_KEY",
-    "Content-Type": "application/json"
-};
-
-response = invokeurl [
-    url: "http://localhost:3000/api/tasks"
-    type: POST
-    parameters: taskData.toString()
-    headers: headers
-];
-
-return response;
-```
-
-### Step 3: Configure Webhook URL
-Set `CLIQ_WEBHOOK_URL` in `.env` to your Cliq extension's incoming webhook URL
-
-## 📝 Development Notes
-
-- Server runs on port 3000 by default (configurable via `PORT` env var)
-- Firebase Firestore collections used:
-  - `tasks` - Task documents
-  - `cliq_user_mappings` - Cliq to Tasker user mappings
-  - `cliq_task_mappings` - Task to Cliq context mappings
+---
 
 ## 🚢 Deployment
 
-For production deployment:
+```bash
+# Production mode
+npm start
 
-1. Set `NODE_ENV=production` in `.env`
-2. Use a process manager like PM2:
-   ```bash
-   npm install -g pm2
-   pm2 start src/server.js --name tasker-backend
-   ```
-3. Set up reverse proxy (nginx) if needed
-4. Configure SSL/TLS certificates
-5. Set up monitoring and alerts
+# With PM2
+pm2 start src/server.js --name tasker-backend
+```
+
+See [Deployment Guide](./docs/getting-started/deployment.md).
+
+---
+
+## 📝 Scripts
+
+| Command       | Description        |
+| ------------- | ------------------ |
+| `npm run dev` | Start with nodemon |
+| `npm start`   | Production start   |
+| `npm test`    | Run tests          |
+
+---
 
 ## 📄 License
 
 MIT
 
-## 👥 Support
+---
 
-For issues and questions, please refer to the main Tasker documentation or contact the development team.
+<div align="center">
+
+**[📚 Full Documentation](./docs/README.md)** | **[🔌 API Reference](./docs/api/overview.md)** | **[🔗 Cliq Integration](./docs/zoho-cliq/overview.md)**
+
+</div>

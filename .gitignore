@@ -5,6 +5,12 @@ logs/
 serviceKeyTasker.json
 .DS_Store
 
+# Copilot instructions (local AI guidance)
+.copilot/
+
+# Test files with tokens
+test-jwt.ps1
+
 # Zoho Cliq Scripts (contains sensitive API keys)
 cliq-scripts/**
 !cliq-scripts/README.md
