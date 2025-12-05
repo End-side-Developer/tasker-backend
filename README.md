@@ -218,11 +218,11 @@ See [Deployment Guide](./docs/getting-started/deployment.md).
 
 ## 🔗 Related Repositories
 
-| Repository | Description |
-|------------|-------------|
-| [📱 Tasker App](https://github.com/ashu-debuger/tasker-app) | Flutter mobile application |
+| Repository                                                         | Description                                     |
+| ------------------------------------------------------------------ | ----------------------------------------------- |
+| [📱 Tasker App](https://github.com/ashu-debuger/tasker-app)         | Flutter mobile application                      |
 | [⚙️ Tasker Backend](https://github.com/ashu-debuger/tasker-backend) | Node.js API & Zoho Cliq integration (this repo) |
-| [📥 Download APK](https://github.com/End-side-Developer/ESD-App_download) | Latest Android release |
+| [📥 Download APK](https://github.com/ashu-debuger/ESD-App-Download) | Latest Android release                          |
 
 ---
 
@@ -236,6 +236,6 @@ MIT
 
 **[📚 Full Documentation](./docs/README.md)** | **[🔌 API Reference](./docs/api/overview.md)** | **[🔗 Cliq Integration](./docs/zoho-cliq/overview.md)**
 
-[📱 Flutter App](https://github.com/ashu-debuger/tasker-app) • [📥 Download](https://github.com/End-side-Developer/ESD-App_download)
+[📱 Flutter App](https://github.com/ashu-debuger/tasker-app) • [📥 Download](https://github.com/ashu-debuger/ESD-App-Download)
 
 </div>
