@@ -173,7 +173,7 @@ exports.createTask = async (req, res) => {
 
 /**
  * List Tasks Command
- * GET /api/cliq/commands/list-tasks?status=pending&priority=high&projectId=xyz&assignedTo=user123
+ * GET /api/cliq/commands/list-tasks?status=pending&priority=high&projectId=xyz
  */
 exports.listTasks = async (req, res) => {
   try {
@@ -181,10 +181,25 @@ exports.listTasks = async (req, res) => {
       status, 
       priority, 
       projectId, 
-      assignedTo, 
       userId,
+      email,
       limit = 10 
     } = req.query;
+
+    // Require user context to avoid leaking all tasks
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: '❌ Missing userId',
+        text: '❌ User context required'
+      });
+    }
+
+    const safeLimit = Math.min(parseInt(limit) || 10, 50);
+
+    // Map Cliq user to Tasker user (if linked); fall back to Cliq ID
+    const mappedUserId = await cliqService.mapCliqUserToTasker(userId, email);
+    const userIdsToMatch = Array.from(new Set([mappedUserId, userId].filter(Boolean)));
 
     let query = getDb().collection('tasks');
     const normalizedStatus = normalizeStatusFilter(status);
@@ -198,24 +213,53 @@ exports.listTasks = async (req, res) => {
       query = query.where('priority', '==', priority);
     }
     if (projectId) {
+      // Ensure caller is a member before listing project tasks
+      const membership = await checkProjectMembership(projectId, userId, email);
+      if (membership.error) {
+        return res.status(404).json({
+          success: false,
+          message: `❌ ${membership.error}`,
+          text: `❌ ${membership.error}`
+        });
+      }
+      if (!membership.isMember) {
+        return res.status(403).json({
+          success: false,
+          message: '❌ You must be a project member to view tasks',
+          text: '❌ You are not a member of this project'
+        });
+      }
+
       query = query.where('projectId', '==', projectId);
     }
-    if (assignedTo) {
-      query = query.where('assignees', 'array-contains', assignedTo);
-    }
 
-    // Order by creation date
-    query = query.orderBy('createdAt', 'desc').limit(parseInt(limit));
+    // Scoped retrieval: tasks assigned to the user OR created by the user
+    const fetchTasks = async () => {
+      const taskMap = new Map();
 
-    const snapshot = await query.get();
-    
-    const tasks = [];
-    snapshot.forEach(doc => {
-      tasks.push({
-        id: doc.id,
-        ...doc.data()
+      for (const id of userIdsToMatch) {
+        // Assigned to user
+        let assignedQuery = query.where('assignees', 'array-contains', id).orderBy('createdAt', 'desc').limit(safeLimit);
+        const assignedSnapshot = await assignedQuery.get();
+        assignedSnapshot.forEach(doc => taskMap.set(doc.id, { id: doc.id, ...doc.data() }));
+
+        // Created by user
+        let createdQuery = query.where('createdBy', '==', id).orderBy('createdAt', 'desc').limit(safeLimit);
+        const createdSnapshot = await createdQuery.get();
+        createdSnapshot.forEach(doc => taskMap.set(doc.id, { id: doc.id, ...doc.data() }));
+      }
+
+      // Sort by createdAt desc and apply final limit
+      const tasks = Array.from(taskMap.values()).sort((a, b) => {
+        const aDate = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const bDate = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return bDate - aDate;
       });
-    });
+
+      return tasks.slice(0, safeLimit);
+    };
+
+    const tasks = await fetchTasks();
 
     logger.info(`Listed ${tasks.length} tasks via Cliq`);
 
