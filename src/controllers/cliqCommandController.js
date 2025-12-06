@@ -238,13 +238,13 @@ exports.listTasks = async (req, res) => {
       const taskMap = new Map();
 
       for (const id of userIdsToMatch) {
-        // Assigned to user
-        let assignedQuery = query.where('assignees', 'array-contains', id).orderBy('createdAt', 'desc').limit(safeLimit);
+        // Assigned to user (avoid Firestore composite index requirement by sorting in-memory)
+        let assignedQuery = query.where('assignees', 'array-contains', id).limit(safeLimit);
         const assignedSnapshot = await assignedQuery.get();
         assignedSnapshot.forEach(doc => taskMap.set(doc.id, { id: doc.id, ...doc.data() }));
 
         // Created by user
-        let createdQuery = query.where('createdBy', '==', id).orderBy('createdAt', 'desc').limit(safeLimit);
+        let createdQuery = query.where('createdBy', '==', id).limit(safeLimit);
         const createdSnapshot = await createdQuery.get();
         createdSnapshot.forEach(doc => taskMap.set(doc.id, { id: doc.id, ...doc.data() }));
       }
