@@ -27,9 +27,93 @@ const authRoutes = require('./routes/authRoutes');
 const testRoutes = require('./routes/testRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
+// FCM notification dependencies
+const { body, validationResult } = require('express-validator');
+const { verifyFirebaseAuth } = require('./middleware/firebaseAuth');
+const notificationService = require('./services/notificationService');
+
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create FCM router
+const fcmRouter = express.Router();
+
+// POST /api/fcm/send - Send notification to single user
+fcmRouter.post(
+  '/send',
+  verifyFirebaseAuth,
+  [
+    body('userId').isString().notEmpty(),
+    body('title').isString().notEmpty(),
+    body('body').isString().notEmpty(),
+    body('data').optional().isObject(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const result = await notificationService.sendToUser(
+        req.body.userId,
+        req.body.title,
+        req.body.body,
+        req.body.data || {}
+      );
+      res.json({ success: true, result });
+    } catch (error) {
+      logger.error('[FCM] Send error:', error);
+      res.status(500).json({ success: false, error: 'Failed to send notification' });
+    }
+  }
+);
+
+// POST /api/fcm/send-multiple - Send to multiple users
+fcmRouter.post(
+  '/send-multiple',
+  verifyFirebaseAuth,
+  [
+    body('userIds').isArray({ min: 1 }),
+    body('title').isString().notEmpty(),
+    body('body').isString().notEmpty(),
+    body('data').optional().isObject(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    try {
+      const result = await notificationService.sendToMultipleUsers(
+        req.body.userIds,
+        req.body.title,
+        req.body.body,
+        req.body.data || {}
+      );
+      res.json({ success: true, result });
+    } catch (error) {
+      logger.error('[FCM] Send multiple error:', error);
+      res.status(500).json({ success: false, error: 'Failed to send notifications' });
+    }
+  }
+);
+
+// POST /api/fcm/test - Test notification
+fcmRouter.post('/test', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const result = await notificationService.sendToUser(
+      req.user.uid,
+      'Test Notification',
+      'This is a test from your backend!',
+      { type: 'test', timestamp: Date.now().toString() }
+    );
+    res.json({ success: true, result });
+  } catch (error) {
+    logger.error('[FCM] Test error:', error);
+    res.status(500).json({ success: false, error: 'Failed to send test' });
+  }
+});
 
 // Behind Azure/App Service reverse proxy, trust X-Forwarded-* so req.ip is correct
 app.set('trust proxy', 1);
@@ -102,6 +186,7 @@ app.use('/api/cliq', verifyAuth, cliqRoutes); // Accepts API key OR JWT token
 app.use('/api/cliq/bot', verifyAuth, botRoutes); // TaskerBot endpoints
 app.use('/api/cliq/notifications', verifyAuth, notificationRoutes); // Notification settings
 app.use('/api/test', testRoutes); // Test endpoints (mixed auth)
+app.use('/api/fcm', fcmRouter); // FCM push notifications (Firebase Auth only)
 
 // Error handling
 app.use(notFound);
