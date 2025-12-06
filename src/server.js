@@ -31,6 +31,9 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind Azure/App Service reverse proxy, trust X-Forwarded-* so req.ip is correct
+app.set('trust proxy', 1);
+
 // Initialize Firebase
 try {
   initializeFirebase();

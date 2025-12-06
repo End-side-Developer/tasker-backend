@@ -76,9 +76,9 @@ class NLPService {
 
       // Assign task patterns
       assign_task: [
-        /assign ['"]?(.+?)['"]? to @?(\w+)/i,
-        /give ['"]?(.+?)['"]? to @?(\w+)/i,
-        /@(\w+) (should|needs to|can you) (.+)/i,
+        /assign ['"]?(.+?)['"]? to @?([\w._-]+)/i,
+        /give ['"]?(.+?)['"]? to @?([\w._-]+)/i,
+        /@([\w._-]+) (should|needs to|can you) (.+)/i,
       ],
 
       // Project-related patterns
@@ -119,6 +119,7 @@ class NLPService {
     }
 
     const cleanMessage = message.trim();
+    logger.debug('NLP parseIntent received', { message: cleanMessage });
     
     // Extract entities first (dates, priorities)
     const entities = this.extractEntities(cleanMessage);
@@ -184,6 +185,8 @@ class NLPService {
       entities.priority = 'low';
     }
 
+    logger.debug('NLP extractEntities', { message, entities });
+
     return entities;
   }
 
@@ -222,23 +225,29 @@ class NLPService {
         const leadingUser = fullMessage.match(/@([\w.-]+)\s+(?:should|needs to|can you|could you)?\s+(.+)/i);
 
         if (directAssign) {
-          return {
+          const params = {
             taskName: directAssign[1] ? directAssign[1].trim() : null,
             assignee: directAssign[2] ? directAssign[2].trim() : null,
           };
+          logger.debug('NLP assign_task (direct)', params);
+          return params;
         }
 
         if (leadingUser) {
-          return {
+          const params = {
             taskName: leadingUser[2] ? leadingUser[2].trim() : null,
             assignee: leadingUser[1] ? leadingUser[1].trim() : null,
           };
+          logger.debug('NLP assign_task (leading user)', params);
+          return params;
         }
 
-        return {
+        const params = {
           taskName: match[3] ? match[3].trim() : null,
           assignee: match[1] ? match[1].trim() : null,
         };
+        logger.debug('NLP assign_task (fallback)', params);
+        return params;
 
       case 'list_tasks':
         // Check for time qualifiers
@@ -359,6 +368,7 @@ class NLPService {
    * Format task list for display
    */
   formatTaskList(tasks, context = {}) {
+    logger.debug('NLP formatTaskList', { count: tasks ? tasks.length : 0, context });
     if (!tasks || tasks.length === 0) {
       return {
         text: "📭 You have no pending tasks!\n\n" +
@@ -462,6 +472,11 @@ class NLPService {
    * Format daily briefing
    */
   formatBriefing(data) {
+    logger.debug('NLP formatBriefing', {
+      dueToday: (data?.dueToday || []).length,
+      overdue: (data?.overdue || []).length,
+      totalPending: data?.totalPending,
+    });
     const { dueToday = [], overdue = [], totalPending = 0 } = data;
 
     let text = "☀️ *Good Morning! Here's your briefing:*\n\n";
@@ -522,6 +537,7 @@ class NLPService {
    * Format date for display
    */
   formatDate(timestamp) {
+    logger.debug('NLP formatDate', { timestamp });
     if (!timestamp) return '';
 
     let date;
@@ -553,6 +569,7 @@ class NLPService {
    * Find best matching task by name using Fuzzy Search
    */
   findMatchingTask(tasks, searchName) {
+    logger.debug('NLP findMatchingTask start', { searchName, taskCount: tasks ? tasks.length : 0 });
     if (!searchName || !tasks || tasks.length === 0) return null;
 
     const search = searchName.toLowerCase().trim();
